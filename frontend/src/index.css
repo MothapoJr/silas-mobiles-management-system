@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-silas-navy: #1f3864;
+  --color-silas-navy-deep: #142943;
+  --color-silas-gold: #f2b705;
+  --color-silas-cream: #fbf8f2;
+  --color-silas-ink: #1a1a1a;
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-silas-cream);
+  color: var(--color-silas-ink);
+}
