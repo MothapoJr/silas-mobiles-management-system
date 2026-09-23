@@ -5,7 +5,8 @@
 #
 # Usage:
 #   cp backend/.env.example backend/.env
-#   docker compose up --build
+#   docker compose up --build          # migrates automatically, then starts the API
+#   docker compose run --rm migrate npm run db:seed   # optional demo data
 #   cd frontend && cp .env.example .env.local && npm install && npm run dev
 
 services:
@@ -26,12 +27,27 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: runs migrations and exits. The backend service below waits
+  # for it to *finish successfully* (not just for postgres to be up)
+  # before starting, so `docker compose up` always starts against an
+  # up-to-date schema without a manual migrate step.
+  migrate:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: postgres
+    command: npm run db:migrate
+
   backend:
     build: ./backend
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - ./backend/.env
     environment:

@@ -1,0 +1,10 @@
+// Points Sequelize CLI at src/ instead of its root-level defaults, so the
+// CLI's file layout matches the rest of the app.
+const path = require('path');
+
+module.exports = {
+  config: path.resolve('src', 'config', 'sequelize-cli.js'),
+  'models-path': path.resolve('src', 'models'),
+  'seeders-path': path.resolve('src', 'seeders'),
+  'migrations-path': path.resolve('src', 'migrations'),
+};

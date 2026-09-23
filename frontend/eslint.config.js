@@ -7,8 +7,10 @@
 import js from '@eslint/js';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
 
 export default [
+  { ignores: ['dist/**', 'node_modules/**'] },
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],
@@ -16,12 +18,7 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'module',
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: {
-        window: 'readonly',
-        document: 'readonly',
-        console: 'readonly',
-        fetch: 'readonly',
-      },
+      globals: globals.browser,
     },
     plugins: { react, 'react-hooks': reactHooks },
     rules: {
@@ -36,11 +33,7 @@ export default [
   {
     files: ['**/*.test.jsx', '**/*.test.js'],
     languageOptions: {
-      globals: {
-        describe: 'readonly',
-        it: 'readonly',
-        expect: 'readonly',
-      },
+      globals: globals.vitest,
     },
   },
 ];

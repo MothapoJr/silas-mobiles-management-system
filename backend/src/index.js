@@ -1,11 +1,11 @@
 const { createApp } = require('./app');
 const env = require('./config/env');
 const { loadSecrets } = require('./config/secrets');
-const { createSequelize } = require('./config/database');
+const { initModels } = require('./models');
 
 async function start() {
   const secrets = await loadSecrets();
-  const sequelize = createSequelize({
+  const { sequelize } = initModels({
     username: secrets.dbUsername,
     password: secrets.dbPassword,
   });
@@ -14,10 +14,10 @@ async function start() {
     await sequelize.authenticate();
     console.log('Database connection established.');
   } catch (err) {
-    // Deliberately non-fatal at this stage of the build: no models exist
-    // yet (T10), so a fresh environment with a not-yet-reachable database
-    // shouldn't stop the health endpoint from coming up. Revisit once T10
-    // lands and real routes actually depend on the database being present.
+    // Still non-fatal: the schema exists now (T10's migrations), but no
+    // route yet queries it — Auth/Client/Admin/Staff modules are T11–T15.
+    // Revisit once any of those land and genuinely need the database up
+    // to serve a request.
     console.error('Database connection failed — continuing without it for now:', err.message);
   }
 

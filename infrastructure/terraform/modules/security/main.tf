@@ -381,6 +381,27 @@ data "aws_iam_policy_document" "github_actions_inline" {
     resources = ["${var.deploy_artifacts_bucket_arn}/*"]
   }
 
+  # T10: lets cd.yml's migrate-database job find a running instance and
+  # run `npm run db:migrate` on it via SSM before CodeDeploy ships new
+  # application code — RDS has no route from a public GitHub-hosted
+  # runner, so this is the only path in. DescribeAutoScalingGroups /
+  # DescribeInstances are describe-only calls that don't support
+  # resource-level scoping in IAM; SendCommand could be scoped further to
+  # a specific document/instance ARN pattern, left broad here since this
+  # role is already tightly bounded by the OIDC trust policy above (only
+  # assumable from this repo's staging/production GitHub Environments).
+  statement {
+    sid       = "FindTargetInstance"
+    actions   = ["autoscaling:DescribeAutoScalingGroups", "ec2:DescribeInstances"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "RunDatabaseMigrations"
+    actions   = ["ssm:SendCommand", "ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "SyncFrontendBuild"
     actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"]

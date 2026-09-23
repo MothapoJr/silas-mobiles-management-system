@@ -1,19 +1,15 @@
 // ESLint 9 flat config (the .eslintrc.* format is legacy as of ESLint 9).
 const js = require('@eslint/js');
+const globals = require('globals');
 
 module.exports = [
+  { ignores: ['node_modules/**', 'coverage/**'] },
   js.configs.recommended,
   {
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
-      globals: {
-        process: 'readonly',
-        console: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
-        __dirname: 'readonly',
-      },
+      globals: globals.node,
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
@@ -22,11 +18,7 @@ module.exports = [
   {
     files: ['tests/**/*.js'],
     languageOptions: {
-      globals: {
-        describe: 'readonly',
-        it: 'readonly',
-        expect: 'readonly',
-      },
+      globals: globals.jest,
     },
   },
 ];
