@@ -31,6 +31,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:15
@@ -42,14 +43,18 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U silas_app -d silas_mobiles"
-          --health-interval 10s
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: backend
 
     env:
       NODE_ENV: test
-      DB_HOST: localhost
-      DB_PORT: 5432
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
       DB_NAME: silas_mobiles
       DB_USERNAME: silas_app
       DB_PASSWORD: silas_dev_password
@@ -66,23 +71,23 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        working-directory: backend
         run: npm ci
 
       - name: Lint
-        working-directory: backend
         run: npm run lint
 
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h 127.0.0.1 -p 5432 -U silas_app -d silas_mobiles; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+
       - name: Migrate database
-        working-directory: backend
         run: npm run db:migrate
 
       - name: Test
-        working-directory: backend
         run: npm test
-    defaults:
-      run:
-        working-directory: backend
   frontend-ci:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true'
