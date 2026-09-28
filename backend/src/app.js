@@ -16,6 +16,7 @@ const cookieParser = require('cookie-parser');
 const env = require('./config/env');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
+const clientRoutes = require('./routes/client.routes');
 
 function createApp() {
   const app = express();
@@ -49,7 +50,7 @@ function createApp() {
 
   app.use(healthRoutes);
   app.use('/api/auth', authRoutes);
-
+app.use('/api/client', clientRoutes);
   // Client, Admin, Staff and Notification routers mount here from T12–T15
 
   app.use((_req, res) => {
