@@ -18,6 +18,7 @@ const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
 const clientRoutes = require('./routes/client.routes');
 const adminRoutes = require('./routes/admin.routes');
+const staffRoutes = require('./routes/staff.routes');
 
 function createApp() {
   const app = express();
@@ -53,6 +54,7 @@ function createApp() {
   app.use('/api/auth', authRoutes);
 app.use('/api/client', clientRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/staff', staffRoutes);
   // Client, Admin, Staff and Notification routers mount here from T12–T15
 
   app.use((_req, res) => {
