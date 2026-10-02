@@ -26,8 +26,11 @@ async function start() {
     await sequelize.authenticate();
     console.log('Database connection established.');
   } catch (err) {
-    console.error('Database connection failed — continuing without it for now:', err.message);
+    console.error('Database connection failed - continuing without it for now:', err.message);
   }
+
+  const { registerObservers } = require('./services/notification.service');
+  registerObservers();
 
   const app = createApp();
   app.listen(env.port, () => {

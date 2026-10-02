@@ -1,6 +1,7 @@
 'use strict';
 
 const { getModels } = require('../models');
+const notificationObserver = require('./notification.observer');
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -100,7 +101,7 @@ async function createQuote(clientId, { items }) {
     throw httpError(400, 'items must be a non-empty array');
   }
 
-  return sequelize.transaction(async (t) => {
+  const createdId = await sequelize.transaction(async (t) => {
     let totalEstimate = 0;
     const resolved = [];
 
@@ -135,10 +136,11 @@ async function createQuote(clientId, { items }) {
       );
     }
 
-    return getQuote(clientId, quote.id);
+    return quote.id;
   });
-}
 
+  return getQuote(clientId, createdId);
+}
 // ---------- Bookings ----------
 
 async function listBookings(clientId) {
@@ -189,7 +191,7 @@ async function createBooking(clientId, { bookingDate, event, items }) {
     throw httpError(400, 'items must be a non-empty array');
   }
 
-  return sequelize.transaction(async (t) => {
+  const createdId = await sequelize.transaction(async (t) => {
     let totalCost = 0;
     const resolved = [];
 
@@ -258,8 +260,10 @@ async function createBooking(clientId, { bookingDate, event, items }) {
       );
     }
 
-    return getBooking(clientId, booking.id);
+    return booking.id;
   });
+
+  return getBooking(clientId, createdId);
 }
 
 async function cancelBooking(clientId, bookingId) {
@@ -269,7 +273,21 @@ async function cancelBooking(clientId, bookingId) {
     throw httpError(400, `Cannot cancel a booking in status "${booking.status}"`);
   }
 
+  const previousStatus = booking.status;
   await booking.update({ status: 'cancelled' });
+
+   try {
+    require('./notification.observer').emitBookingStatusChanged({
+      bookingId: booking.id,
+      clientId,
+      previousStatus,
+      newStatus: 'cancelled',
+      actorUserId: clientId,
+    });
+  } catch (err) {
+    console.error('[client.service] emit failed', err.message);
+  }
+
   return getBooking(clientId, bookingId);
 }
 

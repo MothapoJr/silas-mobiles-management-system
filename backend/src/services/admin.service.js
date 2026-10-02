@@ -1,6 +1,7 @@
 'use strict';
 
 const { getModels } = require('../models');
+const notificationObserver = require('./notification.observer');
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -73,9 +74,8 @@ async function getBooking(bookingId) {
 async function approveBooking(adminId, bookingId) {
   const { Booking, BookingItem, Equipment, sequelize } = getModels();
 
-  return sequelize.transaction(async (t) => {
+  await sequelize.transaction(async (t) => {
     const booking = await Booking.findByPk(bookingId, {
-      include: [{ model: BookingItem }],
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
@@ -92,18 +92,33 @@ async function approveBooking(adminId, bookingId) {
       { transaction: t }
     );
 
-    // Reserve equipment that is still available so it cannot be double-booked
-    for (const item of booking.BookingItems || []) {
+    const items = await BookingItem.findAll({
+      where: { bookingId: booking.id },
+      transaction: t,
+    });
+
+    for (const item of items) {
       const equipment = await Equipment.findByPk(item.equipmentId, { transaction: t });
       if (equipment && equipment.status === 'available') {
         await equipment.update({ status: 'reserved' }, { transaction: t });
       }
     }
-
-    return getBooking(bookingId);
+ 
+    try {
+      require('./notification.observer').emitBookingStatusChanged({
+        bookingId: booking.id,
+        clientId: booking.clientId,
+        previousStatus: 'pending',
+        newStatus: 'confirmed',
+        actorUserId: adminId,
+      });
+    } catch (err) {
+      console.error('[admin.service] emit failed', err.message);
+    }
   });
-}
 
+  return getBooking(bookingId);
+}
 /**
  * Reject a pending booking (Administrator.rejectBooking).
  * Sets status → cancelled. Does not touch equipment (never reserved).
@@ -111,7 +126,7 @@ async function approveBooking(adminId, bookingId) {
 async function rejectBooking(adminId, bookingId, { reason } = {}) {
   const { Booking, sequelize } = getModels();
 
-  return sequelize.transaction(async (t) => {
+  await sequelize.transaction(async (t) => {
     const booking = await Booking.findByPk(bookingId, {
       transaction: t,
       lock: t.LOCK.UPDATE,
@@ -121,13 +136,24 @@ async function rejectBooking(adminId, bookingId, { reason } = {}) {
       throw httpError(400, `Only pending bookings can be rejected (current status: "${booking.status}")`);
     }
 
-    // reason is accepted for future notification/audit use (T15); not stored on Booking yet
     void reason;
-    void adminId;
 
     await booking.update({ status: 'cancelled' }, { transaction: t });
-    return getBooking(bookingId);
+
+    try {
+      require('./notification.observer').emitBookingStatusChanged({
+        bookingId: booking.id,
+        clientId: booking.clientId,
+        previousStatus: 'pending',
+        newStatus: 'cancelled',
+        actorUserId: adminId,
+      });
+    } catch (err) {
+      console.error('[admin.service] emit failed', err.message);
+    }
   });
+
+  return getBooking(bookingId);
 }
 
 // ---------- Equipment (Administrator.manageEquipment) ----------
