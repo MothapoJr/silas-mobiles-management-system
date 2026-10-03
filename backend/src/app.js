@@ -11,9 +11,15 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 
 const env = require('./config/env');
 const healthRoutes = require('./routes/health.routes');
+const authRoutes = require('./routes/auth.routes');
+const clientRoutes = require('./routes/client.routes');
+const adminRoutes = require('./routes/admin.routes');
+const staffRoutes = require('./routes/staff.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 function createApp() {
   const app = express();
@@ -26,6 +32,7 @@ function createApp() {
     })
   );
   app.use(express.json());
+  app.use(cookieParser());
 
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -35,10 +42,22 @@ function createApp() {
   });
   app.use('/api', apiLimiter);
 
-  app.use(healthRoutes);
+  // Stricter limiter on auth endpoints (brute-force protection)
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/auth', authLimiter);
 
-  // Auth, Client, Admin, Staff and Notification routers mount here from
-  // T11–T15 onward — none exist yet, this is T08/T09 scaffolding only.
+  app.use(healthRoutes);
+  app.use('/api/auth', authRoutes);
+app.use('/api/client', clientRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/notifications', notificationRoutes);
+  // Client, Admin, Staff and Notification routers mount here from T12–T15
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
