@@ -103,7 +103,7 @@ async function getAssignment(staffId, assignmentId) {
 }
 
 /**
- * Update assignment status (delivery/collection progress).
+ * Update assignment status (delivery / collection progress).
  * Allowed: assigned → completed | cancelled
  */
 async function updateAssignmentStatus(staffId, assignmentId, status) {
@@ -133,54 +133,13 @@ async function updateAssignmentStatus(staffId, assignmentId, status) {
 /**
  * Staff reports an equipment issue on a booking they are assigned to.
  * Sets Equipment.status → maintenance (Equipment Status Lifecycle).
- * body: { notes? } — notes accepted for future notification/audit (T15)
+ * body: { notes? } — reserved for T15 notification / audit.
  */
 async function reportEquipmentIssue(staffId, equipmentId, { notes } = {}) {
-  const { Equipment, StaffAssignment, BookingItem, sequelize } = getModels();
+  const { Equipment, StaffAssignment, Booking, BookingItem, sequelize } = getModels();
 
   return sequelize.transaction(async (t) => {
-    // Staff may only report issues on equipment linked to one of their active assignments
-    const assignment = await StaffAssignment.findOne({
-      where: { staffId, status: 'assigned' },
-      include: [
-        {
-          model: require('../models').getModels().Booking,
-          include: [
-            {
-              model: BookingItem,
-              where: { equipmentId },
-              required: true,
-            },
-          ],
-        },
-      ],
-      transaction: t,
-    });
-
-    // Simpler ownership check: equipment appears on any of this staff's assigned bookings
     const linked = await StaffAssignment.findOne({
-      where: { staffId },
-      include: [
-        {
-          model: require('../models').getModels().Booking,
-          required: true,
-          include: [
-            {
-              model: BookingItem,
-              where: { equipmentId },
-              required: true,
-            },
-          ],
-        },
-      ],
-      transaction: t,
-    });
-
-    // Prefer explicit check without nested require
-    void assignment;
-
-    const { Booking } = getModels();
-    const hasLink = await StaffAssignment.findOne({
       where: { staffId },
       include: [
         {
@@ -198,7 +157,7 @@ async function reportEquipmentIssue(staffId, equipmentId, { notes } = {}) {
       transaction: t,
     });
 
-    if (!hasLink) {
+    if (!linked) {
       throw httpError(403, 'You can only report issues on equipment linked to your assignments');
     }
 
@@ -209,7 +168,7 @@ async function reportEquipmentIssue(staffId, equipmentId, { notes } = {}) {
       throw httpError(400, 'Cannot report an issue on retired equipment');
     }
 
-    void notes; // reserved for T15 notification / audit log
+    void notes;
 
     await equipment.update({ status: 'maintenance' }, { transaction: t });
     return equipment;
