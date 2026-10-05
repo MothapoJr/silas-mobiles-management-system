@@ -8,6 +8,9 @@ import {
   staffListAssignments,
   staffUpdateAssignmentStatus,
   staffReportIssue,
+  staffGetProfile,
+  staffUpdateProfile,
+  staffUpdateAvailability,
 } from '../services/api';
 
 const TABS = [
@@ -583,14 +586,223 @@ function IssuesSection() {
   );
 }
 
-/* --- Placeholder (filled in by the next T19 slice) ----------------------- */
+/* --- Profile (T19 slice 7: details + availability) ----------------------- */
+
+const AVAILABILITY_OPTIONS = [
+  { value: 'available', label: 'Available' },
+  { value: 'unavailable', label: 'Unavailable' },
+  { value: 'on_leave', label: 'On leave' },
+];
 
 function ProfileSection() {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Details form
+  const [jobRole, setJobRole] = useState('');
+  const [vehicleLicense, setVehicleLicense] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+
+  // Availability
+  const [availBusy, setAvailBusy] = useState(false);
+  const [availError, setAvailError] = useState(null);
+  const [availSuccess, setAvailSuccess] = useState(null);
+
+  function applyProfile(p) {
+    setProfile(p);
+    setJobRole(p?.jobRole || '');
+    setVehicleLicense(p?.vehicleLicense || '');
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await staffGetProfile();
+        if (cancelled) return;
+        applyProfile(res?.profile || res);
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load profile');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (!jobRole.trim()) {
+      setFormError('Job role is required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await staffUpdateProfile({
+        jobRole: jobRole.trim(),
+        vehicleLicense: vehicleLicense.trim() || null,
+      });
+      applyProfile(res?.profile || res);
+      setFormSuccess('Profile updated');
+    } catch (err) {
+      setFormError(err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAvailability(value) {
+    if (!profile || value === profile.availability) return;
+    setAvailError(null);
+    setAvailSuccess(null);
+    setAvailBusy(true);
+    try {
+      const res = await staffUpdateAvailability(value);
+      applyProfile(res?.profile || res);
+      setAvailSuccess('Availability updated');
+    } catch (err) {
+      setAvailError(err.message || 'Failed to update availability');
+    } finally {
+      setAvailBusy(false);
+    }
+  }
+
   return (
     <SectionCard title="Profile">
-      <p className="text-sm text-silas-ink/60">
-        Your details and availability will appear here.
-      </p>
+      {loading && (
+        <p className="text-sm text-silas-ink/60">Loading profile…</p>
+      )}
+
+      {error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && profile && (
+        <div className="space-y-8">
+          {/* Read-only account info */}
+          <div className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4 text-sm">
+            <p className="text-silas-ink/50">Account</p>
+            <p className="mt-1 font-medium text-silas-navy">
+              {profile.User?.email || '—'}
+            </p>
+            <p className="text-silas-ink/60">
+              @{profile.User?.username || '—'} ·{' '}
+              {profile.User?.roleType || 'staff'}
+            </p>
+          </div>
+
+          {/* Availability */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+              Availability
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {AVAILABILITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={availBusy}
+                  aria-pressed={profile.availability === opt.value}
+                  onClick={() => handleAvailability(opt.value)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
+                    profile.availability === opt.value
+                      ? 'bg-silas-navy text-white'
+                      : 'bg-silas-navy/10 text-silas-navy hover:bg-silas-navy/20'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {(availError || availSuccess) && (
+              <p
+                className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                  availError
+                    ? 'bg-red-50 text-red-700'
+                    : 'bg-green-50 text-green-800'
+                }`}
+              >
+                {availError || availSuccess}
+              </p>
+            )}
+          </div>
+
+          {/* Details form */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+              Details
+            </h3>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="staff-job-role"
+                  className="mb-1 block text-sm font-medium text-silas-navy"
+                >
+                  Job role
+                </label>
+                <input
+                  id="staff-job-role"
+                  type="text"
+                  value={jobRole}
+                  onChange={(e) => setJobRole(e.target.value)}
+                  className="w-full rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="staff-vehicle"
+                  className="mb-1 block text-sm font-medium text-silas-navy"
+                >
+                  Vehicle licence (optional)
+                </label>
+                <input
+                  id="staff-vehicle"
+                  type="text"
+                  value={vehicleLicense}
+                  onChange={(e) => setVehicleLicense(e.target.value)}
+                  className="w-full rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                />
+              </div>
+
+              {formError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {formError}
+                </p>
+              )}
+              {formSuccess && (
+                <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+                  {formSuccess}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-lg bg-silas-navy px-4 py-2 text-sm font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save details'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </SectionCard>
   );
 }
