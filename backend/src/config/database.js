@@ -1,7 +1,6 @@
-// Sequelize instance, configured but not yet connected to any models —
-// models and migrations are T10 (Database Schema Implementation) on the
-// WBS, owned by Tayo. This file exists now so T10 has somewhere to plug
-// into rather than starting from nothing.
+// Sequelize instance factory, used by src/models/index.js. Kept separate
+// from the models themselves so nothing here needs to know what tables
+// exist — it only knows how to connect.
 const { Sequelize } = require('sequelize');
 const env = require('./env');
 
@@ -16,6 +15,12 @@ function createSequelize({ username, password }) {
         ? { ssl: { require: true, rejectUnauthorized: true } }
         : {},
     pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
+    define: {
+      // Models use camelCase attributes (roleType); the migrations created
+      // snake_case columns (role_type), matching normal Postgres convention.
+      // This is what maps one to the other everywhere, automatically.
+      underscored: true,
+    },
   });
 }
 

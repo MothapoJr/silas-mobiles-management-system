@@ -1,11 +1,23 @@
 const { createApp } = require('./app');
 const env = require('./config/env');
 const { loadSecrets } = require('./config/secrets');
-const { createSequelize } = require('./config/database');
+const { initModels } = require('./models');
+const { configureAuth } = require('./services/auth.service');
+const { configureAuthMiddleware } = require('./middleware/auth.middleware');
 
 async function start() {
   const secrets = await loadSecrets();
-  const sequelize = createSequelize({
+
+  // Configure JWT secrets before any request can hit auth routes
+  configureAuth({
+    jwtAccessSecret: secrets.jwtAccessSecret,
+    jwtRefreshSecret: secrets.jwtRefreshSecret,
+  });
+  configureAuthMiddleware({
+    jwtAccessSecret: secrets.jwtAccessSecret,
+  });
+
+  const { sequelize } = initModels({
     username: secrets.dbUsername,
     password: secrets.dbPassword,
   });
@@ -14,12 +26,11 @@ async function start() {
     await sequelize.authenticate();
     console.log('Database connection established.');
   } catch (err) {
-    // Deliberately non-fatal at this stage of the build: no models exist
-    // yet (T10), so a fresh environment with a not-yet-reachable database
-    // shouldn't stop the health endpoint from coming up. Revisit once T10
-    // lands and real routes actually depend on the database being present.
-    console.error('Database connection failed — continuing without it for now:', err.message);
+    console.error('Database connection failed - continuing without it for now:', err.message);
   }
+
+  const { registerObservers } = require('./services/notification.service');
+  registerObservers();
 
   const app = createApp();
   app.listen(env.port, () => {
