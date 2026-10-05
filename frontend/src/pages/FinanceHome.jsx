@@ -8,6 +8,7 @@ import {
   financeListInvoices,
   financeMarkInvoicePayment,
   financeCreateInvoice,
+  financeGetSummary,
 } from '../services/api';
 
 const TABS = [
@@ -679,13 +680,128 @@ function CreateSection() {
     </SectionCard>
   );
 }
+/* --- Summary (slice 6) --------------------------------------------------- */
 
 function SummarySection() {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await financeGetSummary();
+        if (!cancelled) setSummary(res);
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load summary');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  function formatMoney(value) {
+    if (value == null || value === '') return 'R 0.00';
+    const n = Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function row(status, label, badgeClass) {
+    const entry = summary?.byStatus?.[status] || {};
+    const count = entry.count ?? 0;
+    const total = entry.total ?? 0;
+    return (
+      <li
+        key={status}
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/10 bg-silas-cream/40 px-4 py-3"
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
+          >
+            {label}
+          </span>
+          <span className="text-sm text-silas-ink/60">
+            {count} invoice{count === 1 ? '' : 's'}
+          </span>
+        </div>
+        <span className="text-sm font-medium text-silas-navy">
+          {formatMoney(total)}
+        </span>
+      </li>
+    );
+  }
+
+  const overall = summary?.overall || {};
+  const overallCount = overall.count ?? 0;
+  const overallTotal = overall.total ?? 0;
+
   return (
     <SectionCard title="Summary">
-      <p className="text-sm text-silas-ink/60">
-        Payment totals will appear here.
-      </p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-silas-ink/60">
+          Totals by payment status across all invoices.
+        </p>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs font-medium text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
+
+      {loading && (
+        <p className="text-sm text-silas-ink/60">Loading summary…</p>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && summary && (
+        <>
+          <ul className="space-y-2">
+            {row('unpaid', 'Unpaid', 'bg-red-100 text-red-700')}
+            {row('partial', 'Partial', 'bg-amber-100 text-amber-800')}
+            {row('paid', 'Paid', 'bg-green-100 text-green-800')}
+          </ul>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/20 bg-white px-4 py-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-silas-ink/50">
+                Overall
+              </p>
+              <p className="text-sm text-silas-ink/60">
+                {overallCount} invoice{overallCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            <p
+              className="text-lg font-semibold text-silas-navy"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              {formatMoney(overallTotal)}
+            </p>
+          </div>
+        </>
+      )}
     </SectionCard>
   );
 }
