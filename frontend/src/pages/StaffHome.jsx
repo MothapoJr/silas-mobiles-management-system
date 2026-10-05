@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   staffListAssignments,
   staffUpdateAssignmentStatus,
+  staffReportIssue,
 } from '../services/api';
 
 const TABS = [
@@ -352,17 +353,237 @@ function AssignmentsSection() {
   );
 }
 
-/* --- Placeholders (filled in by later T19 slices) ------------------------ */
+/* --- Issues (T19 slice 6: report faulty equipment) ----------------------- */
 
 function IssuesSection() {
+  const [equipment, setEquipment] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Report form state
+  const [reportingId, setReportingId] = useState(null);
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await staffListAssignments();
+        if (cancelled) return;
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.assignments)
+            ? res.assignments
+            : [];
+
+        // Flatten assignments -> booking items -> equipment, unique by id
+        const byId = new Map();
+        for (const a of list) {
+          const items = Array.isArray(a.Booking?.BookingItems)
+            ? a.Booking.BookingItems
+            : [];
+          for (const item of items) {
+            const eq = item.Equipment;
+            if (eq?.id && !byId.has(eq.id)) {
+              byId.set(eq.id, {
+                id: eq.id,
+                name: eq.name || 'Equipment',
+                status: eq.status,
+                venue: a.Booking?.Event?.venue || null,
+              });
+            }
+          }
+        }
+        setEquipment(Array.from(byId.values()));
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load equipment');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  function statusBadge(status) {
+    const map = {
+      available: 'bg-green-100 text-green-800',
+      reserved: 'bg-amber-100 text-amber-800',
+      active_deployment: 'bg-blue-100 text-blue-800',
+      maintenance: 'bg-orange-100 text-orange-800',
+      retired: 'bg-silas-ink/10 text-silas-ink/60',
+    };
+    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
+    return (
+      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+        {status || '—'}
+      </span>
+    );
+  }
+
+  function canReport(status) {
+    return status !== 'maintenance' && status !== 'retired';
+  }
+
+  function openForm(id) {
+    setActionError(null);
+    setActionSuccess(null);
+    setNotes('');
+    setReportingId(id);
+  }
+
+  function closeForm() {
+    setReportingId(null);
+    setNotes('');
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!reportingId) return;
+    setSubmitting(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await staffReportIssue(reportingId, notes.trim() || undefined);
+      setActionSuccess('Issue reported. Equipment moved to maintenance.');
+      closeForm();
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setActionError(err.message || 'Failed to report issue');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <SectionCard title="Report an issue">
-      <p className="text-sm text-silas-ink/60">
-        Report faulty equipment from your assignments here.
+      <p className="mb-4 text-sm text-silas-ink/60">
+        Equipment from your assignments. Reporting an issue marks the item as
+        under maintenance so it is not booked out while faulty.
       </p>
+
+      {loading && (
+        <p className="text-sm text-silas-ink/60">Loading equipment…</p>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {(actionError || actionSuccess) && (
+        <p
+          className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+            actionError
+              ? 'bg-red-50 text-red-700'
+              : 'bg-green-50 text-green-800'
+          }`}
+        >
+          {actionError || actionSuccess}
+        </p>
+      )}
+
+      {!loading && !error && equipment.length === 0 && (
+        <p className="text-sm text-silas-ink/50">
+          No equipment linked to your assignments yet.
+        </p>
+      )}
+
+      {!loading && !error && equipment.length > 0 && (
+        <ul className="space-y-3">
+          {equipment.map((eq) => (
+            <li
+              key={eq.id}
+              className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium text-silas-navy">{eq.name}</p>
+                  {eq.venue && (
+                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                      {eq.venue}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {statusBadge(eq.status)}
+                  {reportingId !== eq.id && (
+                    <button
+                      type="button"
+                      disabled={!canReport(eq.status) || submitting}
+                      onClick={() => openForm(eq.id)}
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Report issue
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {reportingId === eq.id && (
+                <form
+                  onSubmit={handleSubmit}
+                  className="mt-3 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3"
+                >
+                  <p className="text-sm text-amber-900">
+                    This will mark <strong>{eq.name}</strong> as under
+                    maintenance. An administrator can restore it afterwards.
+                  </p>
+                  <div>
+                    <label
+                      htmlFor={`issue-notes-${eq.id}`}
+                      className="mb-1 block text-xs font-medium text-silas-navy"
+                    >
+                      What is wrong? (optional)
+                    </label>
+                    <textarea
+                      id={`issue-notes-${eq.id}`}
+                      rows={3}
+                      maxLength={500}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full rounded-lg border border-silas-navy/20 bg-white px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="rounded-lg bg-silas-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+                    >
+                      {submitting ? 'Submitting…' : 'Submit report'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={closeForm}
+                      className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </SectionCard>
   );
 }
+
+/* --- Placeholder (filled in by the next T19 slice) ----------------------- */
 
 function ProfileSection() {
   return (
