@@ -181,3 +181,68 @@ export async function updateClientProfile(body) {
 export async function listNotifications() {
   return request('/notifications');
 }
+
+// ─── Admin API helpers (T18) ────────────────────────────────────────────────
+
+/** GET /api/admin/bookings — optional ?status=pending|confirmed|... */
+export async function adminListBookings(status) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : '';
+  return request(`/admin/bookings${q}`);
+}
+
+/** GET /api/admin/bookings/:id */
+export async function adminGetBooking(id) {
+  return request(`/admin/bookings/${id}`);
+}
+
+/** POST /api/admin/bookings/:id/approve */
+export async function adminApproveBooking(id) {
+  return request(`/admin/bookings/${id}/approve`, { method: 'POST' });
+}
+
+/** POST /api/admin/bookings/:id/reject */
+export async function adminRejectBooking(id) {
+  return request(`/admin/bookings/${id}/reject`, { method: 'POST' });
+}
+
+/** GET /api/admin/equipment */
+export async function adminListEquipment() {
+  return request('/admin/equipment');
+}
+
+/** POST /api/admin/equipment */
+export async function adminCreateEquipment(body) {
+  return request('/admin/equipment', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/** PATCH /api/admin/equipment/:id */
+export async function adminUpdateEquipment(id, body) {
+  return request(`/admin/equipment/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /api/admin/services */
+export async function adminListServices() {
+  return request('/admin/services');
+}
+
+/** POST /api/admin/services */
+export async function adminCreateService(body) {
+  return request('/admin/services', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/** PATCH /api/admin/services/:id */
+export async function adminUpdateService(id, body) {
+  return request(`/admin/services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
