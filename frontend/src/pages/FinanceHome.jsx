@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   financeListInvoices,
   financeMarkInvoicePayment,
+  financeCreateInvoice,
 } from '../services/api';
 
 const TABS = [
@@ -456,12 +457,225 @@ function InvoicesSection() {
 
 /* --- Placeholders (filled in by later slices) ---------------------------- */
 
+/* --- Create (slice 5) ---------------------------------------------------- */
+
+const INVOICE_TYPES = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'credit', label: 'Credit' },
+];
+
 function CreateSection() {
+  const [bookingId, setBookingId] = useState('');
+  const [type, setType] = useState('standard');
+  const [amount, setAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [dueInDays, setDueInDays] = useState('14');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const needsAmount = type === 'partial' || type === 'credit';
+
+  function formatMoney(value) {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function shortId(id) {
+    if (!id) return '—';
+    return String(id).slice(-8);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const id = bookingId.trim();
+    if (!id) {
+      setError('Booking ID is required');
+      return;
+    }
+    if (needsAmount) {
+      const n = Number(amount);
+      if (!amount.trim() || Number.isNaN(n) || n <= 0) {
+        setError('Amount must be a positive number for partial / credit invoices');
+        return;
+      }
+    }
+
+    const body = {
+      bookingId: id,
+      type,
+    };
+    if (needsAmount) body.amount = Number(amount);
+    const method = paymentMethod.trim();
+    if (method) body.paymentMethod = method;
+    const days = dueInDays.trim();
+    if (days !== '') {
+      const d = Number(days);
+      if (Number.isNaN(d) || d < 0) {
+        setError('Due in days must be zero or a positive number');
+        return;
+      }
+      body.dueInDays = d;
+    }
+
+    setBusy(true);
+    try {
+      const inv = await financeCreateInvoice(body);
+      setSuccess(
+        `Created invoice …${shortId(inv.id)} (${inv.type || type}) · ${formatMoney(inv.amount)} · ${inv.paymentStatus || 'unpaid'}`
+      );
+      setBookingId('');
+      setType('standard');
+      setAmount('');
+      setPaymentMethod('');
+      setDueInDays('14');
+    } catch (err) {
+      setError(err.message || 'Failed to create invoice');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <SectionCard title="Create invoice">
-      <p className="text-sm text-silas-ink/60">
-        Invoice creation will appear here.
+      <p className="mb-4 text-sm text-silas-ink/60">
+        Standard invoices take the amount from the booking. Partial and credit
+        invoices need an amount you enter. The backend does not block more than
+        one invoice per booking.
       </p>
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+          {success}
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label
+            htmlFor="create-booking-id"
+            className="mb-1 block text-xs font-medium text-silas-navy"
+          >
+            Booking ID
+          </label>
+          <input
+            id="create-booking-id"
+            type="text"
+            value={bookingId}
+            onChange={(e) => setBookingId(e.target.value)}
+            placeholder="Full UUID from a booking"
+            className="w-full max-w-md rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+            autoComplete="off"
+          />
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs font-medium text-silas-navy">Invoice type</p>
+          <div className="flex flex-wrap gap-2">
+            {INVOICE_TYPES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                disabled={busy}
+                aria-pressed={type === t.value}
+                onClick={() => setType(t.value)}
+                className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
+                  type === t.value
+                    ? 'bg-silas-navy text-white'
+                    : 'bg-silas-navy/10 text-silas-navy hover:bg-silas-navy/20'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {needsAmount && (
+          <div>
+            <label
+              htmlFor="create-amount"
+              className="mb-1 block text-xs font-medium text-silas-navy"
+            >
+              Amount (ZAR)
+            </label>
+            <input
+              id="create-amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="e.g. 1500.00"
+              className="w-full max-w-xs rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+            />
+          </div>
+        )}
+
+        <div>
+          <label
+            htmlFor="create-method"
+            className="mb-1 block text-xs font-medium text-silas-navy"
+          >
+            Payment method (optional)
+          </label>
+          <input
+            id="create-method"
+            type="text"
+            list="create-method-options"
+            maxLength={50}
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            placeholder="e.g. EFT"
+            className="w-full max-w-xs rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+          />
+          <datalist id="create-method-options">
+            <option value="EFT" />
+            <option value="Card" />
+            <option value="Cash" />
+          </datalist>
+        </div>
+
+        <div>
+          <label
+            htmlFor="create-due-days"
+            className="mb-1 block text-xs font-medium text-silas-navy"
+          >
+            Due in days (optional)
+          </label>
+          <input
+            id="create-due-days"
+            type="number"
+            min="0"
+            step="1"
+            value={dueInDays}
+            onChange={(e) => setDueInDays(e.target.value)}
+            className="w-full max-w-[8rem] rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg bg-silas-navy px-4 py-2 text-sm font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+        >
+          {busy ? 'Creating…' : 'Create invoice'}
+        </button>
+      </form>
     </SectionCard>
   );
 }
