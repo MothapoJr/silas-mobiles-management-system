@@ -4,7 +4,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { staffListAssignments } from '../services/api';
+import {
+  staffListAssignments,
+  staffUpdateAssignmentStatus,
+} from '../services/api';
 
 const TABS = [
   { id: 'assignments', label: 'Assignments' },
@@ -85,7 +88,7 @@ export default function StaffHome() {
   );
 }
 
-/* --- Assignments (T19 slice 4: list + filter) ---------------------------- */
+/* --- Assignments (T19 slices 4-5: list, filter, status updates) ---------- */
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -94,11 +97,23 @@ const FILTERS = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const ACTION_LABELS = {
+  completed: 'mark this assignment as completed',
+  cancelled: 'cancel this assignment',
+};
+
 function AssignmentsSection() {
   const [assignments, setAssignments] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Status-update UI state
+  const [confirm, setConfirm] = useState(null); // { id, status } | null
+  const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +144,7 @@ function AssignmentsSection() {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter]);
+  }, [statusFilter, reloadKey]);
 
   function shortId(id) {
     if (!id) return '—';
@@ -155,6 +170,38 @@ function AssignmentsSection() {
     );
   }
 
+  function changeFilter(value) {
+    setStatusFilter(value);
+    setConfirm(null);
+    setActionError(null);
+    setActionSuccess(null);
+  }
+
+  function askConfirm(id, status) {
+    setActionError(null);
+    setActionSuccess(null);
+    setConfirm({ id, status });
+  }
+
+  async function handleConfirm() {
+    if (!confirm) return;
+    const { id, status } = confirm;
+    setBusyId(id);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await staffUpdateAssignmentStatus(id, status);
+      setActionSuccess(`Assignment ${status}`);
+      setConfirm(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setActionError(err.message || 'Status update failed');
+      setConfirm(null);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <SectionCard title="Assignments">
       <div className="mb-4 flex flex-wrap gap-2">
@@ -162,7 +209,7 @@ function AssignmentsSection() {
           <button
             key={f.value}
             type="button"
-            onClick={() => setStatusFilter(f.value)}
+            onClick={() => changeFilter(f.value)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               statusFilter === f.value
                 ? 'bg-silas-navy text-white'
@@ -184,6 +231,18 @@ function AssignmentsSection() {
         </p>
       )}
 
+      {(actionError || actionSuccess) && (
+        <p
+          className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+            actionError
+              ? 'bg-red-50 text-red-700'
+              : 'bg-green-50 text-green-800'
+          }`}
+        >
+          {actionError || actionSuccess}
+        </p>
+      )}
+
       {!loading && !error && assignments.length === 0 && (
         <p className="text-sm text-silas-ink/50">
           No assignments in this filter.
@@ -197,6 +256,7 @@ function AssignmentsSection() {
             const items = Array.isArray(booking?.BookingItems)
               ? booking.BookingItems
               : [];
+            const isConfirming = confirm?.id === a.id;
             return (
               <li
                 key={a.id}
@@ -233,6 +293,55 @@ function AssignmentsSection() {
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {/* Only "assigned" items can change status (backend rule) */}
+                {a.status === 'assigned' && !isConfirming && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === a.id}
+                      onClick={() => askConfirm(a.id, 'completed')}
+                      className="rounded-lg bg-silas-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+                    >
+                      Mark completed
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === a.id}
+                      onClick={() => askConfirm(a.id, 'cancelled')}
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Cancel assignment
+                    </button>
+                  </div>
+                )}
+
+                {isConfirming && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm text-amber-900">
+                      Are you sure you want to {ACTION_LABELS[confirm.status]}?
+                      This cannot be undone.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busyId === a.id}
+                        onClick={handleConfirm}
+                        className="rounded-lg bg-silas-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+                      >
+                        {busyId === a.id ? 'Working…' : 'Yes, confirm'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === a.id}
+                        onClick={() => setConfirm(null)}
+                        className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+                      >
+                        No, go back
+                      </button>
+                    </div>
+                  </div>
                 )}
               </li>
             );
