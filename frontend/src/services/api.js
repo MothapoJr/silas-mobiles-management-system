@@ -120,3 +120,64 @@ export async function getMe() {
 }
 
 export { request, API_BASE };
+
+// ─── Client API helpers (T17) ───────────────────────────────────────────────
+
+export async function getEquipment() {
+  return request('/client/equipment');
+}
+
+export async function getServices() {
+  return request('/client/services');
+}
+
+export async function listQuotes() {
+  return request('/client/quotes');
+}
+
+export async function getQuote(id) {
+  return request(`/client/quotes/${id}`);
+}
+
+export async function createQuote(body) {
+  return request('/client/quotes', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listBookings() {
+  return request('/client/bookings');
+}
+
+export async function getBooking(id) {
+  return request(`/client/bookings/${id}`);
+}
+
+export async function createBooking(body) {
+  return request('/client/bookings', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function cancelBooking(id) {
+  return request(`/client/bookings/${id}/cancel`, {
+    method: 'POST',
+  });
+}
+
+export async function getClientProfile() {
+  return request('/client/me');
+}
+
+export async function updateClientProfile(body) {
+  return request('/client/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listNotifications() {
+  return request('/notifications');
+}
