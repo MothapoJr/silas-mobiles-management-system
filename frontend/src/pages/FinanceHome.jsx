@@ -720,14 +720,14 @@ function SummarySection() {
     })}`;
   }
 
-  function row(status, label, badgeClass) {
-    const entry = summary?.byStatus?.[status] || {};
-    const count = entry.count ?? 0;
-    const total = entry.total ?? 0;
-    return (
-      <li
-        key={status}
-        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/10 bg-silas-cream/40 px-4 py-3"
+function row(status, label, badgeClass) {
+  const entry = summary?.byStatus?.[status] || {};
+  const count = entry.count ?? 0;
+  const total = entry.totalAmount ?? entry.total ?? 0;
+  return (
+    <li
+      key={status}
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/10 bg-silas-cream/40 px-4 py-3"
       >
         <div className="flex items-center gap-2">
           <span
@@ -748,7 +748,9 @@ function SummarySection() {
 
   const overall = summary?.overall || {};
   const overallCount = overall.count ?? 0;
-  const overallTotal = overall.total ?? 0;
+ const overallTotal = overall.totalAmount ?? overall.total ?? 0;
+
+ 
 
   return (
     <SectionCard title="Summary">
