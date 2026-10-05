@@ -1,11 +1,29 @@
 // src/pages/FinanceHome.jsx
+// Finance dashboard. Same layout as ClientHome / AdminHome / StaffHome.
+// Tabs: Invoices | Create | Summary.
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  financeListInvoices,
+  financeMarkInvoicePayment,
+  financeCreateInvoice,
+  financeGetSummary,
+} from '../services/api';
+
+const TABS = [
+  { id: 'invoices', label: 'Invoices' },
+  { id: 'create', label: 'Create' },
+  { id: 'summary', label: 'Summary' },
+];
 
 export default function FinanceHome() {
   const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('invoices');
+
   return (
     <div className="min-h-screen bg-silas-cream">
+      {/* Header */}
       <header className="border-b border-silas-navy/10 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -30,23 +48,776 @@ export default function FinanceHome() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-12">
-        <h1
-          className="text-2xl font-semibold text-silas-navy"
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          Finance dashboard
-        </h1>
-        <p className="mt-2 text-silas-ink/60">
-          Finance API + this UI land after T16.
-        </p>
+
+      {/* Nav tabs */}
+      <nav
+        aria-label="Finance navigation"
+        className="border-b border-silas-navy/10 bg-white"
+      >
+        <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-6">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+              className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-silas-gold text-silas-navy'
+                  : 'border-transparent text-silas-ink/50 hover:text-silas-navy'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Content */}
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        {activeTab === 'invoices' && <InvoicesSection />}
+        {activeTab === 'create' && <CreateSection />}
+        {activeTab === 'summary' && <SummarySection />}
+
         <Link
           to="/"
-          className="mt-8 inline-block text-sm text-silas-navy hover:underline"
+          className="mt-10 inline-block text-sm text-silas-navy hover:underline"
         >
           ← Home
         </Link>
       </main>
+    </div>
+  );
+}
+
+/* --- Invoices (slices 3-4: list, filter, record payment) ----------------- */
+
+const FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'unpaid', label: 'Unpaid' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'paid', label: 'Paid' },
+];
+
+const PAYMENT_STATUSES = [
+  { value: 'unpaid', label: 'Unpaid' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'paid', label: 'Paid' },
+];
+
+function InvoicesSection() {
+  const [invoices, setInvoices] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Record-payment UI state
+  const [editing, setEditing] = useState(null); // { id, status, method, confirming }
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await financeListInvoices(
+          statusFilter === 'all' ? undefined : statusFilter
+        );
+        if (cancelled) return;
+        // Backend returns a plain array
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.invoices)
+            ? res.invoices
+            : [];
+        setInvoices(list);
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load invoices');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [statusFilter, reloadKey]);
+
+  function formatMoney(value) {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function formatDate(value) {
+    if (!value) return '—';
+    return String(value).slice(0, 10);
+  }
+
+  function shortId(id) {
+    if (!id) return '—';
+    return String(id).slice(-8);
+  }
+
+  function statusBadge(status) {
+    const map = {
+      unpaid: 'bg-red-100 text-red-700',
+      partial: 'bg-amber-100 text-amber-800',
+      paid: 'bg-green-100 text-green-800',
+    };
+    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
+    return (
+      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+        {status || '—'}
+      </span>
+    );
+  }
+
+  function changeFilter(value) {
+    setStatusFilter(value);
+    setEditing(null);
+    setActionError(null);
+    setActionSuccess(null);
+  }
+
+  function startEdit(inv) {
+    setActionError(null);
+    setActionSuccess(null);
+    setEditing({
+      id: inv.id,
+      status: inv.paymentStatus,
+      method: inv.paymentMethod || '',
+      confirming: false,
+    });
+  }
+
+  async function save(inv, confirmed) {
+    if (!editing) return;
+    const statusChanged = editing.status !== inv.paymentStatus;
+
+    // Closing an invoice as paid needs an explicit second step
+    if (editing.status === 'paid' && statusChanged && !confirmed) {
+      setEditing((e) => ({ ...e, confirming: true }));
+      return;
+    }
+
+    const method = editing.method.trim();
+    setBusy(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await financeMarkInvoicePayment(
+        inv.id,
+        editing.status,
+        method || undefined
+      );
+      setActionSuccess(`Invoice …${shortId(inv.id)} updated`);
+      setEditing(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setActionError(err.message || 'Payment update failed');
+      setEditing((e) => (e ? { ...e, confirming: false } : e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SectionCard title="Invoices">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => changeFilter(f.value)}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              statusFilter === f.value
+                ? 'bg-silas-navy text-white'
+                : 'bg-silas-navy/10 text-silas-navy hover:bg-silas-navy/20'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <p className="text-sm text-silas-ink/60">Loading invoices…</p>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {(actionError || actionSuccess) && (
+        <p
+          className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+            actionError
+              ? 'bg-red-50 text-red-700'
+              : 'bg-green-50 text-green-800'
+          }`}
+        >
+          {actionError || actionSuccess}
+        </p>
+      )}
+
+      {!loading && !error && invoices.length === 0 && (
+        <p className="text-sm text-silas-ink/50">
+          No invoices in this filter.
+        </p>
+      )}
+
+      {!loading && !error && invoices.length > 0 && (
+        <ul className="space-y-3">
+          {invoices.map((inv) => {
+            const isEditing = editing?.id === inv.id;
+            const methodChanged =
+              isEditing &&
+              editing.method.trim() !== (inv.paymentMethod || '');
+            const hasChange =
+              isEditing &&
+              (editing.status !== inv.paymentStatus || methodChanged);
+
+            return (
+              <li
+                key={inv.id}
+                className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-silas-navy">
+                      Invoice …{shortId(inv.id)}
+                    </p>
+                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                      {inv.Booking?.Client?.User?.email || 'Client'}
+                      {inv.Booking?.id
+                        ? ` · Booking …${shortId(inv.Booking.id)}`
+                        : ''}
+                    </p>
+                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                      Issued: {formatDate(inv.issueDate)} · Due:{' '}
+                      {formatDate(inv.dueDate)}
+                      {inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {statusBadge(inv.paymentStatus)}
+                    <span className="text-sm font-medium text-silas-navy">
+                      {formatMoney(inv.amount)}
+                    </span>
+                  </div>
+                </div>
+
+                {!isEditing && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(inv)}
+                      className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs font-medium text-silas-navy hover:bg-silas-navy/5"
+                    >
+                      Record payment
+                    </button>
+                  </div>
+                )}
+
+                {isEditing && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      save(inv, false);
+                    }}
+                    className="mt-3 space-y-3 rounded-lg border border-silas-navy/10 bg-white p-3"
+                  >
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-silas-navy">
+                        Payment status
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {PAYMENT_STATUSES.map((s) => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            disabled={busy}
+                            aria-pressed={editing.status === s.value}
+                            onClick={() =>
+                              setEditing((e) => ({
+                                ...e,
+                                status: s.value,
+                                confirming: false,
+                              }))
+                            }
+                            className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
+                              editing.status === s.value
+                                ? 'bg-silas-navy text-white'
+                                : 'bg-silas-navy/10 text-silas-navy hover:bg-silas-navy/20'
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor={`pay-method-${inv.id}`}
+                        className="mb-1 block text-xs font-medium text-silas-navy"
+                      >
+                        Payment method (optional)
+                      </label>
+                      <input
+                        id={`pay-method-${inv.id}`}
+                        type="text"
+                        list={`pay-method-options-${inv.id}`}
+                        maxLength={50}
+                        value={editing.method}
+                        onChange={(e) =>
+                          setEditing((cur) => ({
+                            ...cur,
+                            method: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g. EFT"
+                        className="w-full max-w-xs rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                      />
+                      <datalist id={`pay-method-options-${inv.id}`}>
+                        <option value="EFT" />
+                        <option value="Card" />
+                        <option value="Cash" />
+                      </datalist>
+                    </div>
+
+                    {editing.confirming ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-sm text-amber-900">
+                          Mark this invoice ({formatMoney(inv.amount)}) as fully
+                          paid?
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => save(inv, true)}
+                            className="rounded-lg bg-silas-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+                          >
+                            {busy ? 'Working…' : 'Yes, mark as paid'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              setEditing((e) => ({ ...e, confirming: false }))
+                            }
+                            className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+                          >
+                            No, go back
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="submit"
+                          disabled={busy || !hasChange}
+                          className="rounded-lg bg-silas-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+                        >
+                          {busy ? 'Saving…' : 'Save payment'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setEditing(null)}
+                          className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </SectionCard>
+  );
+}
+
+/* --- Placeholders (filled in by later slices) ---------------------------- */
+
+/* --- Create (slice 5) ---------------------------------------------------- */
+
+const INVOICE_TYPES = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'credit', label: 'Credit' },
+];
+
+function CreateSection() {
+  const [bookingId, setBookingId] = useState('');
+  const [type, setType] = useState('standard');
+  const [amount, setAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [dueInDays, setDueInDays] = useState('14');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const needsAmount = type === 'partial' || type === 'credit';
+
+  function formatMoney(value) {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function shortId(id) {
+    if (!id) return '—';
+    return String(id).slice(-8);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const id = bookingId.trim();
+    if (!id) {
+      setError('Booking ID is required');
+      return;
+    }
+    if (needsAmount) {
+      const n = Number(amount);
+      if (!amount.trim() || Number.isNaN(n) || n <= 0) {
+        setError('Amount must be a positive number for partial / credit invoices');
+        return;
+      }
+    }
+
+    const body = {
+      bookingId: id,
+      type,
+    };
+    if (needsAmount) body.amount = Number(amount);
+    const method = paymentMethod.trim();
+    if (method) body.paymentMethod = method;
+    const days = dueInDays.trim();
+    if (days !== '') {
+      const d = Number(days);
+      if (Number.isNaN(d) || d < 0) {
+        setError('Due in days must be zero or a positive number');
+        return;
+      }
+      body.dueInDays = d;
+    }
+
+    setBusy(true);
+    try {
+      const inv = await financeCreateInvoice(body);
+      setSuccess(
+        `Created invoice …${shortId(inv.id)} (${inv.type || type}) · ${formatMoney(inv.amount)} · ${inv.paymentStatus || 'unpaid'}`
+      );
+      setBookingId('');
+      setType('standard');
+      setAmount('');
+      setPaymentMethod('');
+      setDueInDays('14');
+    } catch (err) {
+      setError(err.message || 'Failed to create invoice');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SectionCard title="Create invoice">
+      <p className="mb-4 text-sm text-silas-ink/60">
+        Standard invoices take the amount from the booking. Partial and credit
+        invoices need an amount you enter. The backend does not block more than
+        one invoice per booking.
+      </p>
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+          {success}
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label
+            htmlFor="create-booking-id"
+            className="mb-1 block text-xs font-medium text-silas-navy"
+          >
+            Booking ID
+          </label>
+          <input
+            id="create-booking-id"
+            type="text"
+            value={bookingId}
+            onChange={(e) => setBookingId(e.target.value)}
+            placeholder="Full UUID from a booking"
+            className="w-full max-w-md rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+            autoComplete="off"
+          />
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs font-medium text-silas-navy">Invoice type</p>
+          <div className="flex flex-wrap gap-2">
+            {INVOICE_TYPES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                disabled={busy}
+                aria-pressed={type === t.value}
+                onClick={() => setType(t.value)}
+                className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
+                  type === t.value
+                    ? 'bg-silas-navy text-white'
+                    : 'bg-silas-navy/10 text-silas-navy hover:bg-silas-navy/20'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {needsAmount && (
+          <div>
+            <label
+              htmlFor="create-amount"
+              className="mb-1 block text-xs font-medium text-silas-navy"
+            >
+              Amount (ZAR)
+            </label>
+            <input
+              id="create-amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="e.g. 1500.00"
+              className="w-full max-w-xs rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+            />
+          </div>
+        )}
+
+        <div>
+          <label
+            htmlFor="create-method"
+            className="mb-1 block text-xs font-medium text-silas-navy"
+          >
+            Payment method (optional)
+          </label>
+          <input
+            id="create-method"
+            type="text"
+            list="create-method-options"
+            maxLength={50}
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            placeholder="e.g. EFT"
+            className="w-full max-w-xs rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+          />
+          <datalist id="create-method-options">
+            <option value="EFT" />
+            <option value="Card" />
+            <option value="Cash" />
+          </datalist>
+        </div>
+
+        <div>
+          <label
+            htmlFor="create-due-days"
+            className="mb-1 block text-xs font-medium text-silas-navy"
+          >
+            Due in days (optional)
+          </label>
+          <input
+            id="create-due-days"
+            type="number"
+            min="0"
+            step="1"
+            value={dueInDays}
+            onChange={(e) => setDueInDays(e.target.value)}
+            className="w-full max-w-[8rem] rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg bg-silas-navy px-4 py-2 text-sm font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+        >
+          {busy ? 'Creating…' : 'Create invoice'}
+        </button>
+      </form>
+    </SectionCard>
+  );
+}
+/* --- Summary (slice 6) --------------------------------------------------- */
+
+function SummarySection() {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await financeGetSummary();
+        if (!cancelled) setSummary(res);
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load summary');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  function formatMoney(value) {
+    if (value == null || value === '') return 'R 0.00';
+    const n = Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+function row(status, label, badgeClass) {
+  const entry = summary?.byStatus?.[status] || {};
+  const count = entry.count ?? 0;
+  const total = entry.totalAmount ?? entry.total ?? 0;
+  return (
+    <li
+      key={status}
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/10 bg-silas-cream/40 px-4 py-3"
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
+          >
+            {label}
+          </span>
+          <span className="text-sm text-silas-ink/60">
+            {count} invoice{count === 1 ? '' : 's'}
+          </span>
+        </div>
+        <span className="text-sm font-medium text-silas-navy">
+          {formatMoney(total)}
+        </span>
+      </li>
+    );
+  }
+
+  const overall = summary?.overall || {};
+  const overallCount = overall.count ?? 0;
+ const overallTotal = overall.totalAmount ?? overall.total ?? 0;
+
+ 
+
+  return (
+    <SectionCard title="Summary">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-silas-ink/60">
+          Totals by payment status across all invoices.
+        </p>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs font-medium text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
+
+      {loading && (
+        <p className="text-sm text-silas-ink/60">Loading summary…</p>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && summary && (
+        <>
+          <ul className="space-y-2">
+            {row('unpaid', 'Unpaid', 'bg-red-100 text-red-700')}
+            {row('partial', 'Partial', 'bg-amber-100 text-amber-800')}
+            {row('paid', 'Paid', 'bg-green-100 text-green-800')}
+          </ul>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/20 bg-white px-4 py-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-silas-ink/50">
+                Overall
+              </p>
+              <p className="text-sm text-silas-ink/60">
+                {overallCount} invoice{overallCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            <p
+              className="text-lg font-semibold text-silas-navy"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              {formatMoney(overallTotal)}
+            </p>
+          </div>
+        </>
+      )}
+    </SectionCard>
+  );
+}
+
+function SectionCard({ title, children }) {
+  return (
+    <div className="rounded-xl border border-silas-navy/10 bg-white p-6 shadow-sm">
+      <h2
+        className="mb-4 text-xl font-semibold text-silas-navy"
+        style={{ fontFamily: 'var(--font-display)' }}
+      >
+        {title}
+      </h2>
+      {children}
     </div>
   );
 }

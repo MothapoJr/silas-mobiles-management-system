@@ -297,3 +297,49 @@ export async function staffReportIssue(equipmentId, notes) {
     body: JSON.stringify({ notes }),
   });
 }
+
+
+// --- Finance API helpers (Finance UI) ---------------------------------------
+
+/** GET /api/finance/invoices - optional ?paymentStatus=unpaid|partial|paid -> array */
+export async function financeListInvoices(paymentStatus) {
+  const q = paymentStatus
+    ? `?paymentStatus=${encodeURIComponent(paymentStatus)}`
+    : '';
+  return request(`/finance/invoices${q}`);
+}
+
+/** GET /api/finance/invoices/:id -> invoice (with booking, client, items, event) */
+export async function financeGetInvoice(id) {
+  return request(`/finance/invoices/${id}`);
+}
+
+/**
+ * POST /api/finance/invoices
+ * body: { bookingId, type?: 'standard'|'partial'|'credit', amount?,
+ *         paymentMethod?, dueInDays? } -> invoice
+ */
+export async function financeCreateInvoice(body) {
+  return request('/finance/invoices', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * PATCH /api/finance/invoices/:id/pay
+ * paymentStatus: unpaid|partial|paid, paymentMethod optional -> invoice
+ */
+export async function financeMarkInvoicePayment(id, paymentStatus, paymentMethod) {
+  const body = { paymentStatus };
+  if (paymentMethod !== undefined) body.paymentMethod = paymentMethod;
+  return request(`/finance/invoices/${id}/pay`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /api/finance/reports/summary -> { byStatus: {...}, overall: {...} } */
+export async function financeGetSummary() {
+  return request('/finance/reports/summary');
+}
