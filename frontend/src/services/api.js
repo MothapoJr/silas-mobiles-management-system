@@ -246,3 +246,54 @@ export async function adminUpdateService(id, body) {
     body: JSON.stringify(body),
   });
 }
+
+
+// --- Staff API helpers (T19) ------------------------------------------------
+
+/** GET /api/staff/me -> { profile } */
+export async function staffGetProfile() {
+  return request('/staff/me');
+}
+
+/** PATCH /api/staff/me  body: { jobRole?, vehicleLicense? } -> { profile } */
+export async function staffUpdateProfile(body) {
+  return request('/staff/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/** PATCH /api/staff/me/availability  availability: available|unavailable|on_leave */
+export async function staffUpdateAvailability(availability) {
+  return request('/staff/me/availability', {
+    method: 'PATCH',
+    body: JSON.stringify({ availability }),
+  });
+}
+
+/** GET /api/staff/assignments - optional ?status=assigned|completed|cancelled */
+export async function staffListAssignments(status) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : '';
+  return request(`/staff/assignments${q}`);
+}
+
+/** GET /api/staff/assignments/:id -> { assignment } */
+export async function staffGetAssignment(id) {
+  return request(`/staff/assignments/${id}`);
+}
+
+/** PATCH /api/staff/assignments/:id/status  status: completed|cancelled */
+export async function staffUpdateAssignmentStatus(id, status) {
+  return request(`/staff/assignments/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+/** POST /api/staff/equipment/:id/report-issue  body: { notes? } -> { equipment } */
+export async function staffReportIssue(equipmentId, notes) {
+  return request(`/staff/equipment/${equipmentId}/report-issue`, {
+    method: 'POST',
+    body: JSON.stringify({ notes }),
+  });
+}
