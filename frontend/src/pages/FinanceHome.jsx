@@ -2,6 +2,8 @@
 // Finance dashboard. Same layout as ClientHome / AdminHome / StaffHome.
 // Tabs: Invoices | Create | Summary.
 import DashboardHeader from '../components/DashboardHeader';
+import StatusBadge from '../components/StatusBadge';
+import SectionCard from '../components/SectionCard';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -24,14 +26,11 @@ export default function FinanceHome() {
 
   return (
     <div className="min-h-screen bg-silas-cream">
-      {/* Header */}
-      <header>
-         <DashboardHeader
-          title="Finance dashboard"   // or Administrator / Client / Staff dashboard
-          email={user?.email || user?.username}
-          onLogout={logout}
-/>
-      </header>
+      <DashboardHeader
+        title="Finance dashboard"
+        email={user?.email || user?.username}
+        onLogout={logout}
+      />
 
       {/* Nav tabs */}
       <nav
@@ -151,20 +150,6 @@ function InvoicesSection() {
   function shortId(id) {
     if (!id) return '—';
     return String(id).slice(-8);
-  }
-
-  function statusBadge(status) {
-    const map = {
-      unpaid: 'bg-red-100 text-red-700',
-      partial: 'bg-amber-100 text-amber-800',
-      paid: 'bg-green-100 text-green-800',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
   }
 
   function changeFilter(value) {
@@ -297,7 +282,7 @@ function InvoicesSection() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {statusBadge(inv.paymentStatus)}
+                    <StatusBadge status={inv.paymentStatus} />
                     <span className="text-sm font-medium text-silas-navy">
                       {formatMoney(inv.amount)}
                     </span>
@@ -789,19 +774,5 @@ function row(status, label, badgeClass) {
         </>
       )}
     </SectionCard>
-  );
-}
-
-function SectionCard({ title, children }) {
-  return (
-    <div className="rounded-xl border border-silas-navy/10 bg-white p-6 shadow-sm">
-      <h2
-        className="mb-4 text-xl font-semibold text-silas-navy"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
-        {title}
-      </h2>
-      {children}
-    </div>
   );
 }

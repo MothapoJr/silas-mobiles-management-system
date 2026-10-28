@@ -1,5 +1,4 @@
 // src/pages/AdminHome.jsx
-import DashboardHeader from '../components/DashboardHeader';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,14 +6,14 @@ import {
   adminListBookings,
   adminApproveBooking,
   adminRejectBooking,
-   adminListEquipment,
+  adminListEquipment,
   adminUpdateEquipment,
   adminListServices,
   adminUpdateService,
 } from '../services/api';
-
-
- 
+import DashboardHeader from '../components/DashboardHeader';
+import StatusBadge from '../components/StatusBadge';
+import SectionCard from '../components/SectionCard';
 
 const TABS = [
   { id: 'bookings', label: 'Bookings' },
@@ -28,13 +27,11 @@ export default function AdminHome() {
 
   return (
     <div className="min-h-screen bg-silas-cream">
-      <header>
-        <DashboardHeader
-          title="Administrator dashboard" 
-          email={user?.email || user?.username}
-          onLogout={logout}
-/>
-      </header>
+      <DashboardHeader
+        title="Administrator dashboard"
+        email={user?.email || user?.username}
+        onLogout={logout}
+      />
 
       <nav className="border-b border-silas-navy/10 bg-white">
         <div className="mx-auto flex max-w-5xl gap-1 px-6">
@@ -117,23 +114,6 @@ function BookingsSection() {
     return String(id).slice(-8);
   }
 
-  function statusBadge(status) {
-    const map = {
-      pending: 'bg-amber-100 text-amber-800',
-      confirmed: 'bg-green-100 text-green-800',
-      active: 'bg-blue-100 text-blue-800',
-      completed: 'bg-silas-navy/10 text-silas-navy',
-      cancelled: 'bg-red-100 text-red-700',
-      disputed: 'bg-red-100 text-red-700',
-      expired: 'bg-silas-ink/10 text-silas-ink/60',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
-  }
 
   async function handleApprove(id) {
     setActionError(null);
@@ -244,7 +224,7 @@ function BookingsSection() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  {statusBadge(b.status)}
+                  <StatusBadge status={b.status} />
                   <span className="text-sm font-medium text-silas-navy">
                     {formatMoney(b.totalCost)}
                   </span>
@@ -338,21 +318,6 @@ function EquipmentSection() {
     })}`;
   }
 
-  function statusBadge(status) {
-    const map = {
-      available: 'bg-green-100 text-green-800',
-      reserved: 'bg-amber-100 text-amber-800',
-      active_deployment: 'bg-blue-100 text-blue-800',
-      maintenance: 'bg-orange-100 text-orange-800',
-      retired: 'bg-silas-ink/10 text-silas-ink/60',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
-  }
 
   async function handleStatusChange(id, status) {
     setActionMsg(null);
@@ -409,7 +374,7 @@ function EquipmentSection() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  {statusBadge(eq.status)}
+                  <StatusBadge status={eq.status} />
                   <select
                     value={eq.status || 'available'}
                     disabled={busyId === eq.id}
@@ -628,16 +593,3 @@ function ServicesSection() {
   );
 }
 
-function SectionCard({ title, children }) {
-  return (
-    <div className="rounded-xl border border-silas-navy/10 bg-white p-6 shadow-sm">
-      <h2
-        className="mb-4 text-xl font-semibold text-silas-navy"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
-        {title}
-      </h2>
-      {children}
-    </div>
-  );
-}
