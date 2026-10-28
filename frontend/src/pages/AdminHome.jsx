@@ -1,4 +1,5 @@
 // src/pages/AdminHome.jsx
+import DashboardHeader from '../components/DashboardHeader';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -27,29 +28,12 @@ export default function AdminHome() {
 
   return (
     <div className="min-h-screen bg-silas-cream">
-      <header className="border-b border-silas-navy/10 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-silas-navy text-xs font-semibold text-silas-gold">
-              S
-            </span>
-            <span className="text-sm font-medium text-silas-navy">
-              Administrator dashboard
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-silas-ink/50 sm:inline">
-              {user?.email || user?.username}
-            </span>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-sm text-silas-navy hover:bg-silas-navy/5"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
+      <header>
+        <DashboardHeader
+          title="Administrator dashboard" 
+          email={user?.email || user?.username}
+          onLogout={logout}
+/>
       </header>
 
       <nav className="border-b border-silas-navy/10 bg-white">

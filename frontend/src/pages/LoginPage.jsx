@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, ROLE_HOME } from '../context/AuthContext';
+import Logo from '../components/Logo';
 
 export default function LoginPage() {
   const { login, isAuthenticated, roleType } = useAuth();
@@ -12,7 +13,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Already logged in → bounce to role home
   if (isAuthenticated && roleType) {
     navigate(ROLE_HOME[roleType] || '/', { replace: true });
     return null;
@@ -36,23 +36,18 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-silas-cream">
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-        <div className="rounded-2xl border border-silas-navy/10 bg-white px-8 py-10 shadow-sm">
-          <div className="mb-8 flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-silas-navy text-sm font-semibold text-silas-gold">
-              S
-            </span>
-            <span className="text-sm font-medium tracking-wide text-silas-ink/60">
-              Silas Mobiles
-            </span>
+        <div className="rounded-2xl border border-silas-navy/10 bg-white px-8 py-10 shadow-[var(--shadow-card)]">
+          <div className="mb-8">
+            <Logo variant="lockup" to="/" />
           </div>
 
           <h1
-            className="text-2xl font-semibold text-silas-navy"
+            className="text-2xl font-semibold tracking-tight text-silas-navy"
             style={{ fontFamily: 'var(--font-display)' }}
           >
             Sign in
           </h1>
-          <p className="mt-2 text-sm text-silas-ink/60">
+          <p className="mt-2 text-sm text-silas-muted">
             Use your work account to access the management system.
           </p>
 
@@ -71,7 +66,7 @@ export default function LoginPage() {
                 required
                 value={emailOrUsername}
                 onChange={(e) => setEmailOrUsername(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-white px-3 py-2.5 text-sm text-silas-ink outline-none focus:border-silas-navy focus:ring-2 focus:ring-silas-navy/20"
+                className="mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-white px-3 py-2.5 text-sm text-silas-ink outline-none transition-ui focus:border-silas-navy focus:ring-2 focus:ring-silas-navy/20"
                 placeholder="client@silasmobiles.local"
               />
             </div>
@@ -90,7 +85,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-white px-3 py-2.5 text-sm text-silas-ink outline-none focus:border-silas-navy focus:ring-2 focus:ring-silas-navy/20"
+                className="mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-white px-3 py-2.5 text-sm text-silas-ink outline-none transition-ui focus:border-silas-navy focus:ring-2 focus:ring-silas-navy/20"
                 placeholder="••••••••"
               />
             </div>
@@ -107,14 +102,14 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-silas-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-silas-navy-deep disabled:opacity-60"
+              className="w-full rounded-lg bg-silas-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-ui hover:bg-silas-navy-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-silas-navy disabled:opacity-60"
             >
               {submitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-silas-ink/50">
-            <Link to="/" className="text-silas-navy hover:underline">
+          <p className="mt-6 text-center text-sm text-silas-muted">
+            <Link to="/" className="font-medium text-silas-navy transition-ui hover:underline">
               ← Back to home
             </Link>
           </p>
