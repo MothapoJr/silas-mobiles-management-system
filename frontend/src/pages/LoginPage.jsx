@@ -33,11 +33,14 @@ export default function LoginPage() {
     }
   }
 
+  const fieldClass =
+    'mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-silas-cream/40 px-3 py-2.5 text-sm text-silas-ink outline-none transition-ui placeholder:text-silas-muted/60 focus:border-silas-navy focus:bg-white focus:ring-2 focus:ring-silas-navy/15';
+
   return (
     <div className="min-h-screen bg-silas-cream">
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-        <div className="rounded-2xl border border-silas-navy/10 bg-white px-8 py-10 shadow-[var(--shadow-card)]">
-          <div className="mb-8">
+      <main className="mx-auto flex min-h-screen max-w-[22rem] flex-col justify-center px-6 py-14 sm:max-w-md">
+        <div className="rounded-2xl border border-silas-navy/10 bg-white px-7 py-9 shadow-[var(--shadow-card)] sm:px-8 sm:py-10">
+          <div className="mb-7">
             <Logo variant="lockup" to="/" />
           </div>
 
@@ -47,11 +50,11 @@ export default function LoginPage() {
           >
             Sign in
           </h1>
-          <p className="mt-2 text-sm text-silas-muted">
+          <p className="mt-1.5 text-sm leading-relaxed text-silas-muted">
             Use your work account to access the management system.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit} className="mt-7 space-y-4">
             <div>
               <label
                 htmlFor="emailOrUsername"
@@ -66,7 +69,7 @@ export default function LoginPage() {
                 required
                 value={emailOrUsername}
                 onChange={(e) => setEmailOrUsername(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-white px-3 py-2.5 text-sm text-silas-ink outline-none transition-ui focus:border-silas-navy focus:ring-2 focus:ring-silas-navy/20"
+                className={fieldClass}
                 placeholder="client@silasmobiles.local"
               />
             </div>
@@ -85,7 +88,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-silas-navy/15 bg-white px-3 py-2.5 text-sm text-silas-ink outline-none transition-ui focus:border-silas-navy focus:ring-2 focus:ring-silas-navy/20"
+                className={fieldClass}
                 placeholder="••••••••"
               />
             </div>
@@ -93,7 +96,7 @@ export default function LoginPage() {
             {error && (
               <p
                 role="alert"
-                className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+                className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-100"
               >
                 {error}
               </p>
@@ -102,14 +105,17 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-silas-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-ui hover:bg-silas-navy-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-silas-navy disabled:opacity-60"
+              className="mt-1 w-full rounded-lg bg-silas-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-ui hover:bg-silas-navy-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-silas-navy disabled:opacity-60"
             >
               {submitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-silas-muted">
-            <Link to="/" className="font-medium text-silas-navy transition-ui hover:underline">
+            <Link
+              to="/"
+              className="font-medium text-silas-navy transition-ui hover:underline"
+            >
               ← Back to home
             </Link>
           </p>
