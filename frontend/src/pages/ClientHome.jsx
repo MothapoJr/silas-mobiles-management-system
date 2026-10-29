@@ -144,14 +144,19 @@ function CatalogueSection() {
       )}
 
       {!loading && !error && (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {/* Equipment */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
-              Equipment
-            </h3>
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
+                Equipment
+              </h3>
+              <span className="text-xs tabular-nums text-silas-ink/40">
+                {equipment.length} item{equipment.length === 1 ? '' : 's'}
+              </span>
+            </div>
             {equipment.length === 0 ? (
-              <p className="text-sm text-silas-ink/50">
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-8 text-center text-sm text-silas-ink/50">
                 No equipment available right now.
               </p>
             ) : (
@@ -159,27 +164,31 @@ function CatalogueSection() {
                 {equipment.map((item) => (
                   <li
                     key={item.id}
-                    className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+                    className="group flex h-full flex-col rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm transition-ui hover:border-silas-navy/20 hover:shadow-md"
                   >
-                    <p className="font-medium text-silas-navy">
-                      {item.name || item.equipmentName || 'Equipment'}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="min-w-0 text-[15px] font-semibold leading-snug text-silas-navy">
+                        {item.name || item.equipmentName || 'Equipment'}
+                      </p>
+                      {item.status && <StatusBadge status={item.status} />}
+                    </div>
                     {item.description && (
-                      <p className="mt-1 text-sm text-silas-ink/60 line-clamp-2">
+                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-ink/55 line-clamp-2">
                         {item.description}
                       </p>
                     )}
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                      <span className="font-medium text-silas-navy">
+                    <div className="mt-4 flex items-end justify-between gap-2 border-t border-silas-navy/5 pt-3">
+                      <p className="text-base font-semibold tabular-nums tracking-tight text-silas-navy">
                         {formatMoney(item.dailyRate ?? item.rate)}
-                        <span className="font-normal text-silas-ink/50">
-                          {' '}
+                        <span className="ml-1 text-xs font-normal text-silas-ink/45">
                           / day
                         </span>
-                      </span>
-                      {item.status && (
-                        <StatusBadge status={item.status} />
-                      )}
+                      </p>
+                      {item.EquipmentCategory?.name || item.category ? (
+                        <span className="max-w-[40%] truncate text-right text-[11px] font-medium uppercase tracking-wide text-silas-gold">
+                          {item.EquipmentCategory?.name || item.category}
+                        </span>
+                      ) : null}
                     </div>
                   </li>
                 ))}
@@ -189,29 +198,38 @@ function CatalogueSection() {
 
           {/* Services */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
-              Services
-            </h3>
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
+                Services
+              </h3>
+              <span className="text-xs tabular-nums text-silas-ink/40">
+                {services.length} item{services.length === 1 ? '' : 's'}
+              </span>
+            </div>
             {services.length === 0 ? (
-              <p className="text-sm text-silas-ink/50">No services listed.</p>
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-8 text-center text-sm text-silas-ink/50">
+                No services listed.
+              </p>
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2">
                 {services.map((item) => (
                   <li
                     key={item.id}
-                    className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+                    className="group flex h-full flex-col rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm transition-ui hover:border-silas-navy/20 hover:shadow-md"
                   >
-                    <p className="font-medium text-silas-navy">
+                    <p className="text-[15px] font-semibold leading-snug text-silas-navy">
                       {item.serviceName || item.name || 'Service'}
                     </p>
                     {item.description && (
-                      <p className="mt-1 text-sm text-silas-ink/60 line-clamp-2">
+                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-ink/55 line-clamp-2">
                         {item.description}
                       </p>
                     )}
-                    <p className="mt-3 text-sm font-medium text-silas-navy">
-                      {formatMoney(item.basePrice)}
-                    </p>
+                    <div className="mt-4 border-t border-silas-navy/5 pt-3">
+                      <p className="text-base font-semibold tabular-nums tracking-tight text-silas-navy">
+                        {formatMoney(item.basePrice)}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
