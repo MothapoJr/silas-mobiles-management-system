@@ -1,11 +1,13 @@
 // src/pages/ClientHome.jsx
-import DashboardHeader from '../components/DashboardHeader';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {getEquipment,getServices, listQuotes, createQuote, listBookings,  createBooking,
   cancelBooking,  getClientProfile,
   updateClientProfile,} from '../services/api';
+  import DashboardHeader from '../components/DashboardHeader';
+import StatusBadge from '../components/StatusBadge';
+import SectionCard from '../components/SectionCard';
 
 
 
@@ -25,14 +27,13 @@ export default function ClientHome() {
 
   return (
     <div className="min-h-screen bg-silas-cream">
-      {/* Header */}
-      <header>
+
          <DashboardHeader
           title="Client dashboard"   
           email={user?.email || user?.username}
           onLogout={logout}
 />
-      </header>
+
 
       {/* Nav tabs */}
       <nav className="border-b border-silas-navy/10 bg-white">
@@ -176,9 +177,7 @@ function CatalogueSection() {
                         </span>
                       </span>
                       {item.status && (
-                        <span className="rounded-full bg-silas-navy/10 px-2 py-0.5 text-xs text-silas-navy">
-                          {item.status}
-                        </span>
+                        <StatusBadge status={item.status} />
                       )}
                     </div>
                   </li>
@@ -304,21 +303,6 @@ function QuotesSection() {
     return String(id).slice(-8);
   }
 
-  function statusBadge(status) {
-    const map = {
-      draft: 'bg-silas-navy/10 text-silas-navy',
-      sent: 'bg-amber-100 text-amber-800',
-      accepted: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-700',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
-  }
-
   async function handleCreate(e) {
     e.preventDefault();
     setFormError(null);
@@ -383,7 +367,7 @@ function QuotesSection() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        {statusBadge(q.status)}
+                        <StatusBadge status={q.status} />
                         <span className="text-sm font-medium text-silas-navy">
                           {formatMoney(q.totalEstimate)}
                         </span>
@@ -565,24 +549,6 @@ function BookingsSection() {
     return String(id).slice(-8);
   }
 
-  function statusBadge(status) {
-    const map = {
-      pending: 'bg-amber-100 text-amber-800',
-      confirmed: 'bg-green-100 text-green-800',
-      active: 'bg-blue-100 text-blue-800',
-      completed: 'bg-silas-navy/10 text-silas-navy',
-      cancelled: 'bg-red-100 text-red-700',
-      disputed: 'bg-red-100 text-red-700',
-      expired: 'bg-silas-ink/10 text-silas-ink/60',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
-  }
-
   function canCancel(status) {
     return status === 'pending' || status === 'confirmed';
   }
@@ -714,7 +680,7 @@ function BookingsSection() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        {statusBadge(b.status)}
+                        <StatusBadge status={b.status} />
                         <span className="text-sm font-medium text-silas-navy">
                           {formatMoney(b.totalCost)}
                         </span>
@@ -1080,19 +1046,5 @@ function ProfileSection() {
         </div>
       )}
     </SectionCard>
-  );
-}
-
-function SectionCard({ title, children }) {
-  return (
-    <div className="rounded-xl border border-silas-navy/10 bg-white p-6 shadow-sm">
-      <h2
-        className="mb-4 text-xl font-semibold text-silas-navy"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
-        {title}
-      </h2>
-      {children}
-    </div>
   );
 }

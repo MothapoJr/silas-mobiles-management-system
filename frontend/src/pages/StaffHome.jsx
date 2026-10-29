@@ -1,4 +1,3 @@
-import DashboardHeader from '../components/DashboardHeader';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +9,9 @@ import {
   staffUpdateProfile,
   staffUpdateAvailability,
 } from '../services/api';
+import DashboardHeader from '../components/DashboardHeader';
+import StatusBadge from '../components/StatusBadge';
+import SectionCard from '../components/SectionCard';
 
 const TABS = [
   { id: 'assignments', label: 'Assignments' },
@@ -23,14 +25,12 @@ export default function StaffHome() {
 
   return (
     <div className="min-h-screen bg-silas-cream">
-      {/* Header */}
-      <header>
-        <DashboardHeader
-         title="Staff dashboard"   
-         email={user?.email || user?.username}
-         onLogout={logout}
-/>
-      </header>
+
+      <DashboardHeader
+        title="Staff dashboard"
+        email={user?.email || user?.username}
+        onLogout={logout}
+      />
 
       {/* Nav tabs */}
       <nav
@@ -139,20 +139,6 @@ function AssignmentsSection() {
   function formatDate(value) {
     if (!value) return '—';
     return String(value).slice(0, 10);
-  }
-
-  function statusBadge(status) {
-    const map = {
-      assigned: 'bg-amber-100 text-amber-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-700',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
   }
 
   function changeFilter(value) {
@@ -264,7 +250,7 @@ function AssignmentsSection() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {statusBadge(a.status)}
+                    <StatusBadge status={a.status} />
                   </div>
                 </div>
 
@@ -399,22 +385,6 @@ function IssuesSection() {
     };
   }, [reloadKey]);
 
-  function statusBadge(status) {
-    const map = {
-      available: 'bg-green-100 text-green-800',
-      reserved: 'bg-amber-100 text-amber-800',
-      active_deployment: 'bg-blue-100 text-blue-800',
-      maintenance: 'bg-orange-100 text-orange-800',
-      retired: 'bg-silas-ink/10 text-silas-ink/60',
-    };
-    const cls = map[status] || 'bg-silas-navy/10 text-silas-navy';
-    return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-        {status || '—'}
-      </span>
-    );
-  }
-
   function canReport(status) {
     return status !== 'maintenance' && status !== 'retired';
   }
@@ -501,7 +471,7 @@ function IssuesSection() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  {statusBadge(eq.status)}
+                  <StatusBadge status={eq.status} />
                   {reportingId !== eq.id && (
                     <button
                       type="button"
@@ -785,19 +755,5 @@ function ProfileSection() {
         </div>
       )}
     </SectionCard>
-  );
-}
-
-function SectionCard({ title, children }) {
-  return (
-    <div className="rounded-xl border border-silas-navy/10 bg-white p-6 shadow-sm">
-      <h2
-        className="mb-4 text-xl font-semibold text-silas-navy"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
-        {title}
-      </h2>
-      {children}
-    </div>
   );
 }
