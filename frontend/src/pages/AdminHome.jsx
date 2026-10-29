@@ -14,6 +14,7 @@ import {
 import DashboardHeader from '../components/DashboardHeader';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
+import EntityId from '../components/EntityId';
 
 const TABS = [
   { id: 'bookings', label: 'Bookings' },
@@ -109,12 +110,6 @@ function BookingsSection() {
     })}`;
   }
 
-  function shortId(id) {
-    if (!id) return '—';
-    return String(id).slice(-8);
-  }
-
-
   async function handleApprove(id) {
     setActionError(null);
     setActionSuccess(null);
@@ -205,11 +200,9 @@ function BookingsSection() {
               className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium text-silas-navy">
-                    Booking …{shortId(b.id)}
-                  </p>
-                  <p className="mt-0.5 text-sm text-silas-ink/50">
+                <div className="min-w-0">
+                  <EntityId id={b.id} label="Booking" />
+                  <p className="mt-1.5 text-sm text-silas-ink/50">
                     {b.bookingDate}
                     {b.Event?.venue ? ` · ${b.Event.venue}` : ''}
                     {b.Event?.guestCount != null

@@ -84,7 +84,8 @@ describe('FinanceHome - shell', () => {
 describe('FinanceHome - invoices', () => {
   it('loads and shows invoices on the default tab', async () => {
     renderFinance();
-    expect(await screen.findByText(/Invoice …00000405/)).toBeTruthy();
+    expect(await screen.findByText('Invoice')).toBeTruthy();
+    expect(await screen.findByText('inv-0000000405')).toBeTruthy();
     expect(screen.getByText(/client@silasmobiles.local/)).toBeTruthy();
     expect(screen.getByText('partial')).toBeTruthy();
     expect(api.financeListInvoices).toHaveBeenCalled();

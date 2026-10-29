@@ -12,6 +12,7 @@ import {
 import DashboardHeader from '../components/DashboardHeader';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
+import EntityId from '../components/EntityId';
 
 const TABS = [
   { id: 'assignments', label: 'Assignments' },
@@ -131,10 +132,6 @@ function AssignmentsSection() {
     };
   }, [statusFilter, reloadKey]);
 
-  function shortId(id) {
-    if (!id) return '—';
-    return String(id).slice(-8);
-  }
 
   function formatDate(value) {
     if (!value) return '—';
@@ -234,11 +231,9 @@ function AssignmentsSection() {
                 className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-silas-navy">
-                      Assignment …{shortId(a.id)}
-                    </p>
-                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                  <div className="min-w-0">
+                    <EntityId id={a.id} label="Assignment" />
+                    <p className="mt-1.5 text-sm text-silas-ink/50">
                       {booking?.Event?.venue || 'Venue TBC'}
                       {booking?.Event?.guestCount != null
                         ? ` · ${booking.Event.guestCount} guests`

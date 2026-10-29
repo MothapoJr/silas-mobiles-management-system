@@ -4,6 +4,7 @@
 import DashboardHeader from '../components/DashboardHeader';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
+import EntityId from '../components/EntityId';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -147,11 +148,6 @@ function InvoicesSection() {
     return String(value).slice(0, 10);
   }
 
-  function shortId(id) {
-    if (!id) return '—';
-    return String(id).slice(-8);
-  }
-
   function changeFilter(value) {
     setStatusFilter(value);
     setEditing(null);
@@ -190,7 +186,7 @@ function InvoicesSection() {
         editing.status,
         method || undefined
       );
-      setActionSuccess(`Invoice …${shortId(inv.id)} updated`);
+      setActionSuccess(`Invoice ${inv.id} updated`);
       setEditing(null);
       setReloadKey((k) => k + 1);
     } catch (err) {
@@ -265,15 +261,20 @@ function InvoicesSection() {
                 className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-silas-navy">
-                      Invoice …{shortId(inv.id)}
-                    </p>
-                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                  <div className="min-w-0">
+                    <EntityId id={inv.id} label="Invoice" />
+                    <p className="mt-1.5 text-sm text-silas-ink/50">
                       {inv.Booking?.Client?.User?.email || 'Client'}
-                      {inv.Booking?.id
-                        ? ` · Booking …${shortId(inv.Booking.id)}`
-                        : ''}
+                      {inv.Booking?.id ? (
+                        <>
+                          {' · Booking '}
+                          <EntityId
+                            id={inv.Booking.id}
+                            variant="inline"
+                            copyable={false}
+                          />
+                        </>
+                      ) : null}
                     </p>
                     <p className="mt-0.5 text-sm text-silas-ink/50">
                       Issued: {formatDate(inv.issueDate)} · Due:{' '}
@@ -457,11 +458,6 @@ function CreateSection() {
     })}`;
   }
 
-  function shortId(id) {
-    if (!id) return '—';
-    return String(id).slice(-8);
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -501,7 +497,7 @@ function CreateSection() {
     try {
       const inv = await financeCreateInvoice(body);
       setSuccess(
-        `Created invoice …${shortId(inv.id)} (${inv.type || type}) · ${formatMoney(inv.amount)} · ${inv.paymentStatus || 'unpaid'}`
+        `Created invoice ${inv.id} (${inv.type || type}) · ${formatMoney(inv.amount)} · ${inv.paymentStatus || 'unpaid'}`
       );
       setBookingId('');
       setType('standard');
