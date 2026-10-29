@@ -359,34 +359,36 @@ function QuotesSection() {
         <div className="space-y-8">
           {/* Existing quotes */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
               Your quotes
             </h3>
             {quotes.length === 0 ? (
-              <p className="text-sm text-silas-ink/50">No quotes yet.</p>
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-ink/50">
+                No quotes yet.
+              </p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {quotes.map((q) => (
                   <li
                     key={q.id}
-                    className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+                    className="rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <EntityId id={q.id} label="Quote" />
                         <p className="mt-1.5 text-sm text-silas-ink/50">
                           {q.quoteDate || (q.createdAt || '').slice(0, 10)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
                         <StatusBadge status={q.status} />
-                        <span className="text-sm font-medium text-silas-navy">
+                        <span className="text-sm font-semibold tabular-nums text-silas-navy">
                           {formatMoney(q.totalEstimate)}
                         </span>
                       </div>
                     </div>
                     {Array.isArray(q.QuoteItems) && q.QuoteItems.length > 0 && (
-                      <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-3 text-sm text-silas-ink/70">
+                      <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-2.5 text-sm text-silas-ink/65">
                         {q.QuoteItems.map((item) => (
                           <li key={item.id}>
                             {item.Service?.serviceName || 'Service'} ×{' '}
@@ -661,20 +663,22 @@ function BookingsSection() {
         <div className="space-y-8">
           {/* List */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
               Your bookings
             </h3>
             {bookings.length === 0 ? (
-              <p className="text-sm text-silas-ink/50">No bookings yet.</p>
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-ink/50">
+                No bookings yet.
+              </p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {bookings.map((b) => (
                   <li
                     key={b.id}
-                    className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+                    className="rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <EntityId id={b.id} label="Booking" />
                         <p className="mt-1.5 text-sm text-silas-ink/50">
                           {b.bookingDate}
@@ -684,9 +688,9 @@ function BookingsSection() {
                             : ''}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
                         <StatusBadge status={b.status} />
-                        <span className="text-sm font-medium text-silas-navy">
+                        <span className="text-sm font-semibold tabular-nums text-silas-navy">
                           {formatMoney(b.totalCost)}
                         </span>
                       </div>
@@ -694,7 +698,7 @@ function BookingsSection() {
 
                     {Array.isArray(b.BookingItems) &&
                       b.BookingItems.length > 0 && (
-                        <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-3 text-sm text-silas-ink/70">
+                        <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-2.5 text-sm text-silas-ink/65">
                           {b.BookingItems.map((item) => (
                             <li key={item.id}>
                               {item.Equipment?.name || 'Equipment'} ×{' '}

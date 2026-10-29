@@ -218,7 +218,7 @@ function AssignmentsSection() {
       )}
 
       {!loading && !error && assignments.length > 0 && (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {assignments.map((a) => {
             const booking = a.Booking;
             const items = Array.isArray(booking?.BookingItems)
@@ -228,10 +228,10 @@ function AssignmentsSection() {
             return (
               <li
                 key={a.id}
-                className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+                className="rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15"
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <EntityId id={a.id} label="Assignment" />
                     <p className="mt-1.5 text-sm text-silas-ink/50">
                       {booking?.Event?.venue || 'Venue TBC'}
@@ -244,13 +244,13 @@ function AssignmentsSection() {
                       {formatDate(a.assignedAt)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <StatusBadge status={a.status} />
                   </div>
                 </div>
 
                 {items.length > 0 && (
-                  <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-3 text-sm text-silas-ink/70">
+                  <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-2.5 text-sm text-silas-ink/65">
                     {items.map((item) => (
                       <li key={item.id}>
                         {item.Equipment?.name || 'Equipment'} × {item.quantity}{' '}

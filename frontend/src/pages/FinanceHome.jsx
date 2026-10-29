@@ -245,7 +245,7 @@ function InvoicesSection() {
       )}
 
       {!loading && !error && invoices.length > 0 && (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {invoices.map((inv) => {
             const isEditing = editing?.id === inv.id;
             const methodChanged =
@@ -258,10 +258,10 @@ function InvoicesSection() {
             return (
               <li
                 key={inv.id}
-                className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+                className="rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15"
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <EntityId id={inv.id} label="Invoice" />
                     <p className="mt-1.5 text-sm text-silas-ink/50">
                       {inv.Booking?.Client?.User?.email || 'Client'}
@@ -282,9 +282,9 @@ function InvoicesSection() {
                       {inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <StatusBadge status={inv.paymentStatus} />
-                    <span className="text-sm font-medium text-silas-navy">
+                    <span className="text-sm font-semibold tabular-nums text-silas-navy">
                       {formatMoney(inv.amount)}
                     </span>
                   </div>
