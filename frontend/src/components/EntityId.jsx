@@ -52,7 +52,7 @@ export default function EntityId({
             onClick={handleCopy}
             title={copied ? 'Copied' : 'Copy ID'}
             aria-label={copied ? 'Copied' : 'Copy ID'}
-            className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide text-silas-navy/50 hover:bg-silas-navy/10 hover:text-silas-navy transition-ui"
+            className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide text-silas-navy/70 hover:bg-silas-navy/10 hover:text-silas-navy transition-ui"
           >
             {copied ? 'Copied' : 'Copy'}
           </button>
@@ -65,7 +65,7 @@ export default function EntityId({
   return (
     <div className={`min-w-0 ${className}`}>
       {label && (
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-silas-navy/50">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-silas-navy/70">
           {label}
         </p>
       )}
@@ -79,7 +79,7 @@ export default function EntityId({
             onClick={handleCopy}
             title={copied ? 'Copied' : 'Copy full ID'}
             aria-label={copied ? 'Copied' : 'Copy full ID'}
-            className="shrink-0 rounded-md border border-silas-navy/10 bg-white px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-silas-navy/60 shadow-sm hover:border-silas-navy/25 hover:text-silas-navy transition-ui"
+            className="shrink-0 rounded-md border border-silas-navy/10 bg-white px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-silas-navy/75 shadow-sm hover:border-silas-navy/25 hover:text-silas-navy transition-ui"
           >
             {copied ? 'Copied' : 'Copy'}
           </button>

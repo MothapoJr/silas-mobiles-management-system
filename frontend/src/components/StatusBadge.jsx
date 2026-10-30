@@ -8,9 +8,12 @@ const TONES = {
   cancelled: 'bg-red-100 text-red-800 ring-red-200/80',
   assigned: 'bg-amber-100 text-amber-900 ring-amber-200/80',
   completed: 'bg-emerald-100 text-emerald-900 ring-emerald-200/80',
+  active: 'bg-sky-100 text-sky-900 ring-sky-200/80',
+  disputed: 'bg-orange-100 text-orange-900 ring-orange-200/80',
   // equipment
   available: 'bg-emerald-100 text-emerald-900 ring-emerald-200/80',
   reserved: 'bg-amber-100 text-amber-900 ring-amber-200/80',
+  active_deployment: 'bg-sky-100 text-sky-900 ring-sky-200/80',
   maintenance: 'bg-orange-100 text-orange-900 ring-orange-200/80',
   retired: 'bg-slate-200 text-slate-700 ring-slate-300/80',
   // invoices / payments

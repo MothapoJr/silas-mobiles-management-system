@@ -5,6 +5,8 @@
   --color-silas-navy-deep: #122038;
   --color-silas-gold: #f2b705;
   --color-silas-gold-soft: #f7c94a;
+  /* Text-safe gold: --color-silas-gold is ~1.8:1 as text on white; this is ~5.5:1 */
+  --color-silas-gold-deep: #8a6100;
   --color-silas-cream: #f7f4ec;
   --color-silas-ink: #1a1a1a;
   --color-silas-muted: #5c6570;
