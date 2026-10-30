@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLE_HOME } from '../context/AuthContext';
 import Logo from '../components/Logo';
+import Footer from '../components/Footer';
 
 export default function HomePage() {
   const { isAuthenticated, roleType, user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-silas-cream">
-      <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-16 sm:py-20">
+    <div className="flex min-h-screen flex-col bg-silas-cream">
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-6 py-16 sm:py-20">
         <div className="relative overflow-hidden rounded-2xl border border-silas-navy/10 bg-white px-8 py-10 shadow-[var(--shadow-card)] sm:px-10 sm:py-11">
           <div
             className="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full bg-silas-gold/20 blur-2xl"
@@ -24,7 +25,7 @@ export default function HomePage() {
             <Logo variant="lockup" to={null} />
           </div>
 
-          <p className="relative text-xs font-semibold uppercase tracking-[0.14em] text-silas-gold">
+          <p className="relative text-xs font-semibold uppercase tracking-[0.14em] text-silas-gold-deep">
             Operations platform
           </p>
 
@@ -71,6 +72,7 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
