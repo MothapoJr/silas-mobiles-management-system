@@ -1,6 +1,5 @@
 // src/pages/AdminHome.jsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   adminListBookings,
@@ -11,7 +10,7 @@ import {
   adminListServices,
   adminUpdateService,
 } from '../services/api';
-import DashboardHeader from '../components/DashboardHeader';
+import DashboardLayout from '../components/DashboardLayout';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
 import EntityId from '../components/EntityId';
@@ -27,45 +26,19 @@ export default function AdminHome() {
   const [activeTab, setActiveTab] = useState('bookings');
 
   return (
-    <div className="min-h-screen bg-silas-cream">
-      <DashboardHeader
-        title="Administrator dashboard"
-        email={user?.email || user?.username}
-        onLogout={logout}
-      />
-
-      <nav className="border-b border-silas-navy/10 bg-white">
-        <div className="mx-auto flex max-w-5xl gap-1 px-6">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-silas-gold text-silas-navy'
-                  : 'border-transparent text-silas-ink/50 hover:text-silas-navy'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        {activeTab === 'bookings' && <BookingsSection />}
-        {activeTab === 'equipment' && <EquipmentSection />}
-        {activeTab === 'services' && <ServicesSection />}
-
-        <Link
-          to="/"
-          className="mt-10 inline-block text-sm text-silas-navy hover:underline"
-        >
-          ← Home
-        </Link>
-      </main>
-    </div>
+    <DashboardLayout
+      title="Administrator dashboard"
+      email={user?.email || user?.username}
+      onLogout={logout}
+      tabs={TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      navLabel="Administrator navigation"
+    >
+      {activeTab === 'bookings' && <BookingsSection />}
+      {activeTab === 'equipment' && <EquipmentSection />}
+      {activeTab === 'services' && <ServicesSection />}
+    </DashboardLayout>
   );
 }
 
@@ -189,7 +162,7 @@ function BookingsSection() {
       )}
 
       {!loading && !error && bookings.length === 0 && (
-        <p className="text-sm text-silas-ink/50">No bookings in this filter.</p>
+        <p className="text-sm text-silas-muted">No bookings in this filter.</p>
       )}
 
       {!loading && !error && bookings.length > 0 && (
@@ -197,19 +170,21 @@ function BookingsSection() {
           {bookings.map((b) => (
             <li
               key={b.id}
-              className="rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15"
+              className={`rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15 ${
+                b.status === 'pending' ? 'border-l-4 border-l-amber-400' : ''
+              }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <EntityId id={b.id} label="Booking" />
-                  <p className="mt-1.5 text-sm text-silas-ink/50">
+                  <p className="mt-1.5 text-sm text-silas-muted">
                     {b.bookingDate}
                     {b.Event?.venue ? ` · ${b.Event.venue}` : ''}
                     {b.Event?.guestCount != null
                       ? ` · ${b.Event.guestCount} guests`
                       : ''}
                   </p>
-                  <p className="mt-0.5 text-sm text-silas-ink/50">
+                  <p className="mt-0.5 text-sm text-silas-muted">
                     {b.Client?.name || b.Client?.companyName || 'Client'}
                     {b.Client?.User?.email
                       ? ` · ${b.Client.User.email}`
@@ -262,6 +237,11 @@ function BookingsSection() {
       )}
     </SectionCard>
   );
+}
+
+function statusLabel(s) {
+  const t = String(s).replace(/_/g, ' ');
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 function EquipmentSection() {
@@ -345,7 +325,7 @@ function EquipmentSection() {
       )}
 
       {!loading && !error && items.length === 0 && (
-        <p className="text-sm text-silas-ink/50">No equipment found.</p>
+        <p className="text-sm text-silas-muted">No equipment found.</p>
       )}
 
       {!loading && !error && items.length > 0 && (
@@ -353,12 +333,12 @@ function EquipmentSection() {
           {items.map((eq) => (
             <li
               key={eq.id}
-              className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+              className="rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm transition-ui hover:border-silas-navy/15"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-silas-navy">{eq.name}</p>
-                  <p className="mt-0.5 text-sm text-silas-ink/50">
+                  <p className="mt-0.5 text-sm text-silas-muted">
                     {eq.EquipmentCategory?.categoryName || 'Uncategorised'}
                     {eq.description ? ` · ${eq.description}` : ''}
                   </p>
@@ -369,6 +349,7 @@ function EquipmentSection() {
                 <div className="flex flex-col items-end gap-2">
                   <StatusBadge status={eq.status} />
                   <select
+                    aria-label={`Change status of ${eq.name}`}
                     value={eq.status || 'available'}
                     disabled={busyId === eq.id}
                     onChange={(e) => handleStatusChange(eq.id, e.target.value)}
@@ -376,7 +357,7 @@ function EquipmentSection() {
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {statusLabel(s)}
                       </option>
                     ))}
                   </select>
@@ -488,7 +469,7 @@ function ServicesSection() {
       )}
 
       {!loading && !error && services.length === 0 && (
-        <p className="text-sm text-silas-ink/50">No services found.</p>
+        <p className="text-sm text-silas-muted">No services found.</p>
       )}
 
       {!loading && !error && services.length > 0 && (
@@ -496,7 +477,7 @@ function ServicesSection() {
           {services.map((svc) => (
             <li
               key={svc.id}
-              className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+              className="rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm transition-ui hover:border-silas-navy/15"
             >
               {editingId === svc.id ? (
                 <form onSubmit={handleSave} className="space-y-3">
@@ -561,7 +542,7 @@ function ServicesSection() {
                       {svc.serviceName}
                     </p>
                     {svc.description && (
-                      <p className="mt-0.5 text-sm text-silas-ink/50">
+                      <p className="mt-0.5 text-sm text-silas-muted">
                         {svc.description}
                       </p>
                     )}
@@ -585,4 +566,3 @@ function ServicesSection() {
     </SectionCard>
   );
 }
-
