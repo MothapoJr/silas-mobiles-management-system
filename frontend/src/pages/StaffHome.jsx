@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   staffListAssignments,
@@ -9,7 +8,7 @@ import {
   staffUpdateProfile,
   staffUpdateAvailability,
 } from '../services/api';
-import DashboardHeader from '../components/DashboardHeader';
+import DashboardLayout from '../components/DashboardLayout';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
 import EntityId from '../components/EntityId';
@@ -25,52 +24,19 @@ export default function StaffHome() {
   const [activeTab, setActiveTab] = useState('assignments');
 
   return (
-    <div className="min-h-screen bg-silas-cream">
-
-      <DashboardHeader
-        title="Staff dashboard"
-        email={user?.email || user?.username}
-        onLogout={logout}
-      />
-
-      {/* Nav tabs */}
-      <nav
-        aria-label="Staff navigation"
-        className="border-b border-silas-navy/10 bg-white"
-      >
-        <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-6">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-              className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-silas-gold text-silas-navy'
-                  : 'border-transparent text-silas-ink/50 hover:text-silas-navy'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        {activeTab === 'assignments' && <AssignmentsSection />}
-        {activeTab === 'issues' && <IssuesSection />}
-        {activeTab === 'profile' && <ProfileSection />}
-
-        <Link
-          to="/"
-          className="mt-10 inline-block text-sm text-silas-navy hover:underline"
-        >
-          ← Home
-        </Link>
-      </main>
-    </div>
+    <DashboardLayout
+      title="Staff dashboard"
+      email={user?.email || user?.username}
+      onLogout={logout}
+      tabs={TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      navLabel="Staff navigation"
+    >
+      {activeTab === 'assignments' && <AssignmentsSection />}
+      {activeTab === 'issues' && <IssuesSection />}
+      {activeTab === 'profile' && <ProfileSection />}
+    </DashboardLayout>
   );
 }
 
@@ -212,7 +178,7 @@ function AssignmentsSection() {
       )}
 
       {!loading && !error && assignments.length === 0 && (
-        <p className="text-sm text-silas-ink/50">
+        <p className="text-sm text-silas-muted">
           No assignments in this filter.
         </p>
       )}
@@ -233,13 +199,13 @@ function AssignmentsSection() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <EntityId id={a.id} label="Assignment" />
-                    <p className="mt-1.5 text-sm text-silas-ink/50">
+                    <p className="mt-1.5 text-sm text-silas-muted">
                       {booking?.Event?.venue || 'Venue TBC'}
                       {booking?.Event?.guestCount != null
                         ? ` · ${booking.Event.guestCount} guests`
                         : ''}
                     </p>
-                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                    <p className="mt-0.5 text-sm text-silas-muted">
                       Event date: {formatDate(booking?.bookingDate)} · Assigned:{' '}
                       {formatDate(a.assignedAt)}
                     </p>
@@ -444,7 +410,7 @@ function IssuesSection() {
       )}
 
       {!loading && !error && equipment.length === 0 && (
-        <p className="text-sm text-silas-ink/50">
+        <p className="text-sm text-silas-muted">
           No equipment linked to your assignments yet.
         </p>
       )}
@@ -454,13 +420,13 @@ function IssuesSection() {
           {equipment.map((eq) => (
             <li
               key={eq.id}
-              className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4"
+              className="rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm transition-ui hover:border-silas-navy/15"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-medium text-silas-navy">{eq.name}</p>
                   {eq.venue && (
-                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                    <p className="mt-0.5 text-sm text-silas-muted">
                       {eq.venue}
                     </p>
                   )}
@@ -643,7 +609,7 @@ function ProfileSection() {
         <div className="space-y-8">
           {/* Read-only account info */}
           <div className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4 text-sm">
-            <p className="text-silas-ink/50">Account</p>
+            <p className="text-silas-muted">Account</p>
             <p className="mt-1 font-medium text-silas-navy">
               {profile.User?.email || '—'}
             </p>
@@ -655,7 +621,7 @@ function ProfileSection() {
 
           {/* Availability */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               Availability
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -691,7 +657,7 @@ function ProfileSection() {
 
           {/* Details form */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               Details
             </h3>
             <form onSubmit={handleSave} className="space-y-4">
