@@ -1,12 +1,11 @@
 // src/pages/FinanceHome.jsx
 // Finance dashboard. Same layout as ClientHome / AdminHome / StaffHome.
 // Tabs: Invoices | Create | Summary.
-import DashboardHeader from '../components/DashboardHeader';
+import DashboardLayout from '../components/DashboardLayout';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
 import EntityId from '../components/EntityId';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   financeListInvoices,
@@ -26,51 +25,19 @@ export default function FinanceHome() {
   const [activeTab, setActiveTab] = useState('invoices');
 
   return (
-    <div className="min-h-screen bg-silas-cream">
-      <DashboardHeader
-        title="Finance dashboard"
-        email={user?.email || user?.username}
-        onLogout={logout}
-      />
-
-      {/* Nav tabs */}
-      <nav
-        aria-label="Finance navigation"
-        className="border-b border-silas-navy/10 bg-white"
-      >
-        <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-6">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-              className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-silas-gold text-silas-navy'
-                  : 'border-transparent text-silas-ink/50 hover:text-silas-navy'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        {activeTab === 'invoices' && <InvoicesSection />}
-        {activeTab === 'create' && <CreateSection />}
-        {activeTab === 'summary' && <SummarySection />}
-
-        <Link
-          to="/"
-          className="mt-10 inline-block text-sm text-silas-navy hover:underline"
-        >
-          ← Home
-        </Link>
-      </main>
-    </div>
+    <DashboardLayout
+      title="Finance dashboard"
+      email={user?.email || user?.username}
+      onLogout={logout}
+      tabs={TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      navLabel="Finance navigation"
+    >
+      {activeTab === 'invoices' && <InvoicesSection />}
+      {activeTab === 'create' && <CreateSection />}
+      {activeTab === 'summary' && <SummarySection />}
+    </DashboardLayout>
   );
 }
 
@@ -239,7 +206,7 @@ function InvoicesSection() {
       )}
 
       {!loading && !error && invoices.length === 0 && (
-        <p className="text-sm text-silas-ink/50">
+        <p className="text-sm text-silas-muted">
           No invoices in this filter.
         </p>
       )}
@@ -263,7 +230,7 @@ function InvoicesSection() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <EntityId id={inv.id} label="Invoice" />
-                    <p className="mt-1.5 text-sm text-silas-ink/50">
+                    <p className="mt-1.5 text-sm text-silas-muted">
                       {inv.Booking?.Client?.User?.email || 'Client'}
                       {inv.Booking?.id ? (
                         <>
@@ -276,7 +243,7 @@ function InvoicesSection() {
                         </>
                       ) : null}
                     </p>
-                    <p className="mt-0.5 text-sm text-silas-ink/50">
+                    <p className="mt-0.5 text-sm text-silas-muted">
                       Issued: {formatDate(inv.issueDate)} · Due:{' '}
                       {formatDate(inv.dueDate)}
                       {inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}
@@ -645,7 +612,13 @@ function CreateSection() {
     </SectionCard>
   );
 }
-/* --- Summary (slice 6) --------------------------------------------------- */
+/* --- Summary ------------------------------------------------------------- */
+
+const SUMMARY_ROWS = [
+  { key: 'unpaid', bar: 'bg-red-500' },
+  { key: 'partial', bar: 'bg-amber-400' },
+  { key: 'paid', bar: 'bg-emerald-500' },
+];
 
 function SummarySection() {
   const [summary, setSummary] = useState(null);
@@ -685,56 +658,43 @@ function SummarySection() {
     })}`;
   }
 
-function row(status, label, badgeClass) {
-  const entry = summary?.byStatus?.[status] || {};
-  const count = entry.count ?? 0;
-  const total = entry.totalAmount ?? entry.total ?? 0;
-  return (
-    <li
-      key={status}
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/10 bg-silas-cream/40 px-4 py-3"
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
-          >
-            {label}
-          </span>
-          <span className="text-sm text-silas-ink/60">
-            {count} invoice{count === 1 ? '' : 's'}
-          </span>
-        </div>
-        <span className="text-sm font-medium text-silas-navy">
-          {formatMoney(total)}
-        </span>
-      </li>
-    );
+  function entryFor(status) {
+    const entry = summary?.byStatus?.[status] || {};
+    return {
+      count: Number(entry.count ?? 0),
+      total: Number(entry.totalAmount ?? entry.total ?? 0),
+    };
   }
 
   const overall = summary?.overall || {};
   const overallCount = overall.count ?? 0;
- const overallTotal = overall.totalAmount ?? overall.total ?? 0;
+  const overallTotal = Number(overall.totalAmount ?? overall.total ?? 0);
 
- 
+  function share(total) {
+    if (!overallTotal) return 0;
+    return Math.round((total / overallTotal) * 100);
+  }
 
   return (
-    <SectionCard title="Summary">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-silas-ink/60">
-          Totals by payment status across all invoices.
-        </p>
+    <SectionCard
+      title="Summary"
+      action={
         <button
           type="button"
           disabled={loading}
           onClick={() => setReloadKey((k) => k + 1)}
-          className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs font-medium text-silas-navy hover:bg-silas-navy/5 disabled:opacity-50"
+          className="rounded-lg border border-silas-navy/20 px-3 py-1.5 text-xs font-medium text-silas-navy transition-ui hover:bg-silas-navy/5 disabled:opacity-50"
         >
           {loading ? 'Refreshing…' : 'Refresh'}
         </button>
-      </div>
+      }
+    >
+      <p className="mb-5 text-sm text-silas-muted">
+        Totals by payment status across all invoices.
+      </p>
 
       {loading && (
-        <p className="text-sm text-silas-ink/60">Loading summary…</p>
+        <p className="text-sm text-silas-muted">Loading summary…</p>
       )}
 
       {error && (
@@ -744,30 +704,72 @@ function row(status, label, badgeClass) {
       )}
 
       {!loading && !error && summary && (
-        <>
-          <ul className="space-y-2">
-            {row('unpaid', 'Unpaid', 'bg-red-100 text-red-700')}
-            {row('partial', 'Partial', 'bg-amber-100 text-amber-800')}
-            {row('paid', 'Paid', 'bg-green-100 text-green-800')}
-          </ul>
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-silas-navy/20 bg-white px-4 py-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-silas-ink/50">
-                Overall
-              </p>
-              <p className="text-sm text-silas-ink/60">
-                {overallCount} invoice{overallCount === 1 ? '' : 's'}
-              </p>
-            </div>
+        <div className="space-y-4">
+          {/* Hero number — the projector moment */}
+          <div className="rounded-2xl bg-silas-navy p-6 text-white sm:p-7">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">
+              Total invoiced
+            </p>
             <p
-              className="text-lg font-semibold text-silas-navy"
+              className="mt-2 text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl"
               style={{ fontFamily: 'var(--font-display)' }}
             >
               {formatMoney(overallTotal)}
             </p>
+            <p className="mt-1 text-sm text-white/75">
+              {overallCount} invoice{overallCount === 1 ? '' : 's'}
+            </p>
+
+            {/* Share of value by status */}
+            <div
+              className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full bg-white/15"
+              role="img"
+              aria-label={`Share of invoiced value: ${SUMMARY_ROWS.map(
+                (r) => `${r.key} ${share(entryFor(r.key).total)}%`
+              ).join(', ')}`}
+            >
+              {SUMMARY_ROWS.map((r) => {
+                const pct = share(entryFor(r.key).total);
+                return pct > 0 ? (
+                  <div
+                    key={r.key}
+                    className={r.bar}
+                    style={{ width: `${pct}%` }}
+                  />
+                ) : null;
+              })}
+            </div>
           </div>
-        </>
+
+          {/* Per-status cards */}
+          <ul className="grid gap-3 sm:grid-cols-3">
+            {SUMMARY_ROWS.map((r) => {
+              const { count, total } = entryFor(r.key);
+              return (
+                <li
+                  key={r.key}
+                  className="rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <StatusBadge status={r.key} />
+                    <span className="text-xs tabular-nums text-silas-muted">
+                      {share(total)}% of value
+                    </span>
+                  </div>
+                  <p
+                    className="mt-3 text-xl font-semibold tabular-nums tracking-tight text-silas-navy"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    {formatMoney(total)}
+                  </p>
+                  <p className="mt-0.5 text-sm text-silas-muted">
+                    {count} invoice{count === 1 ? '' : 's'}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </SectionCard>
   );
