@@ -1,11 +1,10 @@
 // src/pages/ClientHome.jsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {getEquipment,getServices, listQuotes, createQuote, listBookings,  createBooking,
   cancelBooking,  getClientProfile,
   updateClientProfile,} from '../services/api';
-import DashboardHeader from '../components/DashboardHeader';
+import DashboardLayout from '../components/DashboardLayout';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
 import EntityId from '../components/EntityId';
@@ -27,50 +26,20 @@ export default function ClientHome() {
   const [activeTab, setActiveTab] = useState('catalogue');
 
   return (
-    <div className="min-h-screen bg-silas-cream">
-
-         <DashboardHeader
-          title="Client dashboard"   
-          email={user?.email || user?.username}
-          onLogout={logout}
-/>
-
-
-      {/* Nav tabs */}
-      <nav className="border-b border-silas-navy/10 bg-white">
-        <div className="mx-auto flex max-w-5xl gap-1 px-6">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-silas-gold text-silas-navy'
-                  : 'border-transparent text-silas-ink/50 hover:text-silas-navy'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        {activeTab === 'catalogue' && <CatalogueSection />}
-        {activeTab === 'quotes' && <QuotesSection />}
-        {activeTab === 'bookings' && <BookingsSection />}
-        {activeTab === 'profile' && <ProfileSection />}
-
-        <Link
-          to="/"
-          className="mt-10 inline-block text-sm text-silas-navy hover:underline"
-        >
-          ← Home
-        </Link>
-      </main>
-    </div>
+    <DashboardLayout
+      title="Client dashboard"
+      email={user?.email || user?.username}
+      onLogout={logout}
+      tabs={TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      navLabel="Client navigation"
+    >
+      {activeTab === 'catalogue' && <CatalogueSection />}
+      {activeTab === 'quotes' && <QuotesSection />}
+      {activeTab === 'bookings' && <BookingsSection />}
+      {activeTab === 'profile' && <ProfileSection />}
+    </DashboardLayout>
   );
 }
 
@@ -148,15 +117,15 @@ function CatalogueSection() {
           {/* Equipment */}
           <div>
             <div className="mb-3 flex items-baseline justify-between gap-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
                 Equipment
               </h3>
-              <span className="text-xs tabular-nums text-silas-ink/40">
+              <span className="text-xs tabular-nums text-silas-muted">
                 {equipment.length} item{equipment.length === 1 ? '' : 's'}
               </span>
             </div>
             {equipment.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-8 text-center text-sm text-silas-ink/50">
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-8 text-center text-sm text-silas-muted">
                 No equipment available right now.
               </p>
             ) : (
@@ -173,20 +142,20 @@ function CatalogueSection() {
                       {item.status && <StatusBadge status={item.status} />}
                     </div>
                     {item.description && (
-                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-ink/55 line-clamp-2">
+                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-muted line-clamp-2">
                         {item.description}
                       </p>
                     )}
                     <div className="mt-4 flex items-end justify-between gap-2 border-t border-silas-navy/5 pt-3">
                       <p className="text-base font-semibold tabular-nums tracking-tight text-silas-navy">
                         {formatMoney(item.dailyRate ?? item.rate)}
-                        <span className="ml-1 text-xs font-normal text-silas-ink/45">
+                        <span className="ml-1 text-xs font-normal text-silas-muted">
                           / day
                         </span>
                       </p>
-                      {item.EquipmentCategory?.name || item.category ? (
-                        <span className="max-w-[40%] truncate text-right text-[11px] font-medium uppercase tracking-wide text-silas-gold">
-                          {item.EquipmentCategory?.name || item.category}
+                      {item.EquipmentCategory?.categoryName || item.category ? (
+                        <span className="max-w-[40%] truncate text-right text-[11px] font-semibold uppercase tracking-wide text-silas-gold-deep">
+                          {item.EquipmentCategory?.categoryName || item.category}
                         </span>
                       ) : null}
                     </div>
@@ -199,15 +168,15 @@ function CatalogueSection() {
           {/* Services */}
           <div>
             <div className="mb-3 flex items-baseline justify-between gap-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
                 Services
               </h3>
-              <span className="text-xs tabular-nums text-silas-ink/40">
+              <span className="text-xs tabular-nums text-silas-muted">
                 {services.length} item{services.length === 1 ? '' : 's'}
               </span>
             </div>
             {services.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-8 text-center text-sm text-silas-ink/50">
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-8 text-center text-sm text-silas-muted">
                 No services listed.
               </p>
             ) : (
@@ -221,7 +190,7 @@ function CatalogueSection() {
                       {item.serviceName || item.name || 'Service'}
                     </p>
                     {item.description && (
-                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-ink/55 line-clamp-2">
+                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-muted line-clamp-2">
                         {item.description}
                       </p>
                     )}
@@ -359,11 +328,11 @@ function QuotesSection() {
         <div className="space-y-8">
           {/* Existing quotes */}
           <div>
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               Your quotes
             </h3>
             {quotes.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-ink/50">
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-muted">
                 No quotes yet.
               </p>
             ) : (
@@ -376,7 +345,7 @@ function QuotesSection() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <EntityId id={q.id} label="Quote" />
-                        <p className="mt-1.5 text-sm text-silas-ink/50">
+                        <p className="mt-1.5 text-sm text-silas-muted">
                           {q.quoteDate || (q.createdAt || '').slice(0, 10)}
                         </p>
                       </div>
@@ -405,7 +374,7 @@ function QuotesSection() {
 
           {/* Create form */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               New quote
             </h3>
             <form
@@ -663,11 +632,11 @@ function BookingsSection() {
         <div className="space-y-8">
           {/* List */}
           <div>
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/55">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               Your bookings
             </h3>
             {bookings.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-ink/50">
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-muted">
                 No bookings yet.
               </p>
             ) : (
@@ -680,7 +649,7 @@ function BookingsSection() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <EntityId id={b.id} label="Booking" />
-                        <p className="mt-1.5 text-sm text-silas-ink/50">
+                        <p className="mt-1.5 text-sm text-silas-muted">
                           {b.bookingDate}
                           {b.Event?.venue ? ` · ${b.Event.venue}` : ''}
                           {b.Event?.guestCount != null
@@ -732,11 +701,11 @@ function BookingsSection() {
 
           {/* Create */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-silas-navy/70">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               New booking
             </h3>
             {equipment.length === 0 && (
-              <p className="mb-3 text-sm text-silas-ink/50">
+              <p className="mb-3 text-sm text-silas-muted">
                 No available equipment in the catalogue right now — create will
                 fail until an item is marked available.
               </p>
@@ -959,7 +928,7 @@ function ProfileSection() {
         <div className="space-y-6">
           {/* Read-only account info */}
           <div className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4 text-sm">
-            <p className="text-silas-ink/50">Account</p>
+            <p className="text-silas-muted">Account</p>
             <p className="mt-1 font-medium text-silas-navy">
               {profile.User?.email || '—'}
             </p>
