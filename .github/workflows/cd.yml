@@ -17,7 +17,14 @@ jobs:
   # has to match the "environment:staging" / "environment:production" sub
   # claims the OIDC trust policy checks — see
   # infrastructure/terraform/modules/security.
+  #
+  # AWS deployment is opt-in: every job below depends on this one, so while the
+  # repository variable AWS_CD_ENABLED is not 'true' the whole pipeline is
+  # skipped (grey) instead of failing (red) against infrastructure that does
+  # not exist. Set it under Settings -> Secrets and variables -> Actions ->
+  # Variables once `terraform apply` has been run.
   determine-environment:
+    if: ${{ vars.AWS_CD_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       env_name: ${{ steps.set.outputs.env_name }}
