@@ -25,6 +25,13 @@ const financeRoutes = require('./routes/finance.routes');
 function createApp() {
   const app = express();
 
+  // Behind a reverse proxy (Vercel rewrite -> Render load balancer) every request
+  // would otherwise look like it came from the proxy's IP, so the rate limiters
+  // below would count ALL users as one. TRUST_PROXY_HOPS = number of proxies in
+  // front of the app (0 / unset locally, 2 for Vercel + Render).
+  const proxyHops = parseInt(process.env.TRUST_PROXY_HOPS, 10);
+  if (proxyHops > 0) app.set('trust proxy', proxyHops);
+
   app.use(helmet());
   app.use(
     cors({
