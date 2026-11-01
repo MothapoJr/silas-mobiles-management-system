@@ -73,11 +73,17 @@ app.use('/api/finance', financeRoutes);
   });
 
   app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error',
+    console.error(err);
+    const status = err.status || 500;
+    // Never leak internals (DB hostnames, stack details) to clients in deployed
+    // environments: 5xx responses get a generic message, the real error stays in the logs.
+    const deployed = env.nodeEnv === 'production' || env.nodeEnv === 'staging';
+    const message =
+      status >= 500 && deployed
+        ? 'Internal server error'
+        : err.message || 'Internal server error';
+    res.status(status).json({ error: message });
   });
-});
 
   return app;
 }
