@@ -1,36 +1,53 @@
 // src/pages/ClientHome.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import {getEquipment,getServices, listQuotes, createQuote, listBookings,  createBooking,
-  cancelBooking,  getClientProfile,
-  updateClientProfile,} from '../services/api';
+import {
+  getEquipment,
+  getServices,
+  listQuotes,
+  createQuote,
+  listBookings,
+  createBooking,
+  cancelBooking,
+  getClientProfile,
+  updateClientProfile,
+} from '../services/api';
 import DashboardLayout from '../components/DashboardLayout';
 import StatusBadge from '../components/StatusBadge';
 import SectionCard from '../components/SectionCard';
 import EntityId from '../components/EntityId';
-
-
-
-
-
-
-const TABS = [
-  { id: 'catalogue', label: 'Catalogue' },
-  { id: 'quotes', label: 'Quotes' },
-  { id: 'bookings', label: 'Bookings' },
-  { id: 'profile', label: 'Profile' },
-];
+import EquipmentImage from '../components/EquipmentImage';
+import ClientNotifications from '../components/ClientNotifications';
+import { useUnreadCount } from '../hooks/useNotifications';
 
 export default function ClientHome() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('catalogue');
+  const { count: unreadCount, refresh: refreshUnread } = useUnreadCount();
+
+  const tabs = useMemo(
+    () => [
+      { id: 'catalogue', label: 'Catalogue' },
+      { id: 'quotes', label: 'Quotes' },
+      { id: 'bookings', label: 'Bookings' },
+      {
+        id: 'notifications',
+        label:
+          unreadCount > 0
+            ? `Notifications (${unreadCount})`
+            : 'Notifications',
+      },
+      { id: 'profile', label: 'Profile' },
+    ],
+    [unreadCount]
+  );
 
   return (
     <DashboardLayout
       title="Client dashboard"
       email={user?.email || user?.username}
       onLogout={logout}
-      tabs={TABS}
+      tabs={tabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       navLabel="Client navigation"
@@ -38,12 +55,15 @@ export default function ClientHome() {
       {activeTab === 'catalogue' && <CatalogueSection />}
       {activeTab === 'quotes' && <QuotesSection />}
       {activeTab === 'bookings' && <BookingsSection />}
+      {activeTab === 'notifications' && (
+        <ClientNotifications onChange={refreshUnread} />
+      )}
       {activeTab === 'profile' && <ProfileSection />}
     </DashboardLayout>
   );
 }
 
-/* ─── Section placeholders (filled in later pieces) ─────────────────────── */
+/* ─── Catalogue (with equipment photos) ─────────────────────────────────── */
 
 function CatalogueSection() {
   const [equipment, setEquipment] = useState([]);
@@ -64,7 +84,6 @@ function CatalogueSection() {
         ]);
         if (cancelled) return;
 
-        // Backend returns { equipment: [...] } / { services: [...] }
         const eqList = Array.isArray(eqRes)
           ? eqRes
           : Array.isArray(eqRes?.equipment)
@@ -97,7 +116,10 @@ function CatalogueSection() {
     if (value == null || value === '') return '—';
     const n = Number(value);
     if (Number.isNaN(n)) return String(value);
-    return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }
 
   return (
@@ -129,38 +151,55 @@ function CatalogueSection() {
                 No equipment available right now.
               </p>
             ) : (
-              <ul className="grid gap-3 sm:grid-cols-2">
-                {equipment.map((item) => (
-                  <li
-                    key={item.id}
-                    className="group flex h-full flex-col rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm transition-ui hover:border-silas-navy/20 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="min-w-0 text-[15px] font-semibold leading-snug text-silas-navy">
-                        {item.name || item.equipmentName || 'Equipment'}
-                      </p>
-                      {item.status && <StatusBadge status={item.status} />}
-                    </div>
-                    {item.description && (
-                      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-muted line-clamp-2">
-                        {item.description}
-                      </p>
-                    )}
-                    <div className="mt-4 flex items-end justify-between gap-2 border-t border-silas-navy/5 pt-3">
-                      <p className="text-base font-semibold tabular-nums tracking-tight text-silas-navy">
-                        {formatMoney(item.dailyRate ?? item.rate)}
-                        <span className="ml-1 text-xs font-normal text-silas-muted">
-                          / day
-                        </span>
-                      </p>
-                      {item.EquipmentCategory?.categoryName || item.category ? (
-                        <span className="max-w-[40%] truncate text-right text-[11px] font-semibold uppercase tracking-wide text-silas-gold-deep">
-                          {item.EquipmentCategory?.categoryName || item.category}
-                        </span>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
+              <ul className="grid gap-4 sm:grid-cols-2">
+                {equipment.map((item) => {
+                  const categoryName =
+                    item.EquipmentCategory?.categoryName ||
+                    item.categoryName ||
+                    item.category ||
+                    '';
+                  const displayName =
+                    item.name || item.equipmentName || 'Equipment';
+
+                  return (
+                    <li
+                      key={item.id}
+                      className="group flex h-full flex-col overflow-hidden rounded-xl border border-silas-navy/10 bg-white shadow-sm transition-ui hover:border-silas-navy/20 hover:shadow-md"
+                    >
+                      <EquipmentImage
+                        name={displayName}
+                        category={categoryName}
+                        imageUrl={item.imageUrl || item.image_url || null}
+                      />
+                      <div className="flex flex-1 flex-col p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="min-w-0 text-[15px] font-semibold leading-snug text-silas-navy">
+                            {displayName}
+                          </p>
+                          {item.status && <StatusBadge status={item.status} />}
+                        </div>
+                        {item.description && (
+                          <p className="mt-1.5 flex-1 text-sm leading-relaxed text-silas-muted line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="mt-4 flex items-end justify-between gap-2 border-t border-silas-navy/5 pt-3">
+                          <p className="text-base font-semibold tabular-nums tracking-tight text-silas-navy">
+                            {formatMoney(item.dailyRate ?? item.rate)}
+                            <span className="ml-1 text-xs font-normal text-silas-muted">
+                              / day
+                            </span>
+                          </p>
+                          {categoryName ? (
+                            <span className="max-w-[40%] truncate text-right text-[11px] font-semibold uppercase tracking-wide text-silas-gold-deep">
+                              {categoryName}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -210,13 +249,14 @@ function CatalogueSection() {
   );
 }
 
+/* ─── Quotes ────────────────────────────────────────────────────────────── */
+
 function QuotesSection() {
   const [quotes, setQuotes] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Create form state
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -259,7 +299,7 @@ function QuotesSection() {
 
         setQuotes(list);
         setServices(svcList);
-        if (svcList.length > 0 && !selectedServiceId) {
+        if (svcList.length > 0) {
           setSelectedServiceId(svcList[0].id);
         }
       } catch (err) {
@@ -273,7 +313,6 @@ function QuotesSection() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function formatMoney(value) {
@@ -314,9 +353,7 @@ function QuotesSection() {
 
   return (
     <SectionCard title="Quotes">
-      {loading && (
-        <p className="text-sm text-silas-ink/60">Loading quotes…</p>
-      )}
+      {loading && <p className="text-sm text-silas-ink/60">Loading quotes…</p>}
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -326,7 +363,6 @@ function QuotesSection() {
 
       {!loading && !error && (
         <div className="space-y-8">
-          {/* Existing quotes */}
           <div>
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               Your quotes
@@ -346,13 +382,18 @@ function QuotesSection() {
                       <div className="min-w-0 flex-1">
                         <EntityId id={q.id} label="Quote" />
                         <p className="mt-1.5 text-sm text-silas-muted">
-                          {q.quoteDate || (q.createdAt || '').slice(0, 10)}
+                          {q.createdAt
+                            ? new Date(q.createdAt).toLocaleDateString('en-ZA')
+                            : ''}
+                          {q.validUntil
+                            ? ` · valid until ${q.validUntil}`
+                            : ''}
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        <StatusBadge status={q.status} />
+                        {q.status && <StatusBadge status={q.status} />}
                         <span className="text-sm font-semibold tabular-nums text-silas-navy">
-                          {formatMoney(q.totalEstimate)}
+                          {formatMoney(q.totalAmount ?? q.total)}
                         </span>
                       </div>
                     </div>
@@ -360,8 +401,10 @@ function QuotesSection() {
                       <ul className="mt-3 space-y-1 border-t border-silas-navy/5 pt-2.5 text-sm text-silas-ink/65">
                         {q.QuoteItems.map((item) => (
                           <li key={item.id}>
-                            {item.Service?.serviceName || 'Service'} ×{' '}
-                            {item.quantity} @ {formatMoney(item.unitPrice)}
+                            {item.Service?.serviceName ||
+                              item.Service?.name ||
+                              'Service'}{' '}
+                            × {item.quantity} · {formatMoney(item.lineTotal)}
                           </li>
                         ))}
                       </ul>
@@ -372,10 +415,9 @@ function QuotesSection() {
             )}
           </div>
 
-          {/* Create form */}
           <div>
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
-              New quote
+              Request a quote
             </h3>
             <form
               onSubmit={handleCreate}
@@ -399,7 +441,8 @@ function QuotesSection() {
                   )}
                   {services.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.serviceName} — {formatMoney(s.basePrice)}
+                      {s.serviceName || s.name} —{' '}
+                      {formatMoney(s.basePrice)}
                     </option>
                   ))}
                 </select>
@@ -448,6 +491,8 @@ function QuotesSection() {
   );
 }
 
+/* ─── Bookings ──────────────────────────────────────────────────────────── */
+
 function BookingsSection() {
   const [bookings, setBookings] = useState([]);
   const [equipment, setEquipment] = useState([]);
@@ -457,7 +502,6 @@ function BookingsSection() {
   const [actionSuccess, setActionSuccess] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
 
-  // Create form
   const [bookingDate, setBookingDate] = useState('');
   const [venue, setVenue] = useState('');
   const [guestCount, setGuestCount] = useState('');
@@ -630,7 +674,6 @@ function BookingsSection() {
 
       {!loading && !error && (
         <div className="space-y-8">
-          {/* List */}
           <div>
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               Your bookings
@@ -699,7 +742,6 @@ function BookingsSection() {
             )}
           </div>
 
-          {/* Create */}
           <div>
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
               New booking
@@ -849,6 +891,8 @@ function BookingsSection() {
   );
 }
 
+/* ─── Profile ───────────────────────────────────────────────────────────── */
+
 function ProfileSection() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -897,16 +941,16 @@ function ProfileSection() {
     setSaving(true);
     try {
       const res = await updateClientProfile({
-        name: name.trim(),
-        companyName: companyName.trim(),
-        contactDetails: contactDetails.trim(),
-        address: address.trim(),
+        name: name.trim() || undefined,
+        companyName: companyName.trim() || undefined,
+        contactDetails: contactDetails.trim() || undefined,
+        address: address.trim() || undefined,
       });
       const p = res?.profile || res;
       setProfile(p);
-      setFormSuccess('Profile updated');
+      setFormSuccess('Profile saved');
     } catch (err) {
-      setFormError(err.message || 'Failed to update profile');
+      setFormError(err.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -919,31 +963,28 @@ function ProfileSection() {
       )}
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
       )}
 
-      {!loading && !error && profile && (
-        <div className="space-y-6">
-          {/* Read-only account info */}
-          <div className="rounded-lg border border-silas-navy/10 bg-silas-cream/40 p-4 text-sm">
-            <p className="text-silas-muted">Account</p>
-            <p className="mt-1 font-medium text-silas-navy">
-              {profile.User?.email || '—'}
+      {!loading && !error && (
+        <div className="max-w-lg">
+          {profile?.id && (
+            <p className="mb-4 text-sm text-silas-muted">
+              Client ID:{' '}
+              <span className="font-mono text-xs text-silas-navy">
+                {profile.id}
+              </span>
             </p>
-            <p className="text-silas-ink/60">
-              @{profile.User?.username || '—'} · {profile.User?.roleType || 'client'}
-            </p>
-          </div>
-
+          )}
           <form onSubmit={handleSave} className="space-y-4">
             <div>
               <label
                 htmlFor="pf-name"
                 className="mb-1 block text-sm font-medium text-silas-navy"
               >
-                Display name
+                Name
               </label>
               <input
                 id="pf-name"

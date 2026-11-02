@@ -182,6 +182,11 @@ export async function listNotifications() {
   return request('/notifications');
 }
 
+/** PATCH /api/notifications/:id/read — mark one notification as read */
+export async function markNotificationRead(id) {
+  return request(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
 // ─── Admin API helpers (T18) ────────────────────────────────────────────────
 
 /** GET /api/admin/bookings — optional ?status=pending|confirmed|... */
