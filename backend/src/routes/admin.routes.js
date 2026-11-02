@@ -171,4 +171,39 @@ router.get(
   })
 );
 
+// ---------- Staff & assignments ----------
+
+router.get(
+  '/staff',
+  handle(async (req) => {
+    const staff = await adminService.listStaff({
+      availability: req.query.availability || undefined,
+    });
+    return { staff };
+  })
+);
+
+router.get(
+  '/assignments',
+  handle(async (req) => {
+    const assignments = await adminService.listAssignments({
+      status: req.query.status || undefined,
+      bookingId: req.query.bookingId || undefined,
+    });
+    return { assignments };
+  })
+);
+
+router.post(
+  '/assignments',
+  handle(async (req) => {
+    const assignment = await adminService.assignStaff(req.user.id, {
+      staffId: req.body?.staffId,
+      bookingId: req.body?.bookingId,
+      assignmentRole: req.body?.assignmentRole,
+    });
+    return { assignment };
+  })
+);
+
 module.exports = router;

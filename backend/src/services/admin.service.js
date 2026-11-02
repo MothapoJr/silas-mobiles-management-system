@@ -366,6 +366,159 @@ async function listCategories() {
   return EquipmentCategory.findAll({ order: [['categoryName', 'ASC']] });
 }
 
+// ---------- Staff & assignments (Administrator.assignStaff) ----------
+
+const ASSIGNMENT_STATUSES = ['assigned', 'completed', 'cancelled'];
+const ASSIGNABLE_BOOKING_STATUSES = ['confirmed', 'active'];
+
+/**
+ * List all staff profiles (for the admin assign-staff picker).
+ * Optional ?availability=available|unavailable|on_leave
+ */
+async function listStaff({ availability } = {}) {
+  const { Staff, User } = getModels();
+  const where = {};
+  if (availability) {
+    if (!['available', 'unavailable', 'on_leave'].includes(availability)) {
+      throw httpError(400, `Invalid availability filter: ${availability}`);
+    }
+    where.availability = availability;
+  }
+
+  return Staff.findAll({
+    where,
+    include: [
+      { model: User, attributes: ['id', 'username', 'email', 'roleType', 'isActive'] },
+    ],
+    order: [['jobRole', 'ASC']],
+  });
+}
+
+/**
+ * List staff assignments across the organisation.
+ * Optional ?status=assigned|completed|cancelled and ?bookingId=
+ */
+async function listAssignments({ status, bookingId } = {}) {
+  const {
+    StaffAssignment,
+    Staff,
+    User,
+    Booking,
+    Event,
+    BookingItem,
+    Equipment,
+    Client,
+  } = getModels();
+
+  const where = {};
+  if (status) {
+    if (!ASSIGNMENT_STATUSES.includes(status)) {
+      throw httpError(400, `Invalid assignment status filter: ${status}`);
+    }
+    where.status = status;
+  }
+  if (bookingId) {
+    where.bookingId = bookingId;
+  }
+
+  return StaffAssignment.findAll({
+    where,
+    include: [
+      {
+        model: Staff,
+        include: [
+          { model: User, attributes: ['id', 'username', 'email'] },
+        ],
+      },
+      {
+        model: Booking,
+        include: [
+          { model: Event },
+          {
+            model: Client,
+            include: [{ model: User, attributes: ['id', 'username', 'email'] }],
+          },
+          {
+            model: BookingItem,
+            include: [{ model: Equipment, attributes: ['id', 'name', 'status', 'dailyRate'] }],
+          },
+        ],
+      },
+    ],
+    order: [['assignedAt', 'DESC']],
+  });
+}
+
+/**
+ * Assign a staff member to a confirmed (or active) booking.
+ * Body: { staffId, bookingId, assignmentRole? }
+ * Prevents duplicate active assignments of the same staff to the same booking.
+ */
+async function assignStaff(adminId, { staffId, bookingId, assignmentRole } = {}) {
+  void adminId;
+  if (!staffId) throw httpError(400, 'staffId is required');
+  if (!bookingId) throw httpError(400, 'bookingId is required');
+
+  const { Staff, StaffAssignment, Booking, sequelize } = getModels();
+
+  let createdId;
+  await sequelize.transaction(async (t) => {
+    const booking = await Booking.findByPk(bookingId, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (!booking) throw httpError(404, 'Booking not found');
+    if (!ASSIGNABLE_BOOKING_STATUSES.includes(booking.status)) {
+      throw httpError(
+        400,
+        `Only confirmed or active bookings can be assigned staff (current status: "${booking.status}")`
+      );
+    }
+
+    const staff = await Staff.findByPk(staffId, { transaction: t });
+    if (!staff) throw httpError(404, 'Staff member not found');
+
+    const existing = await StaffAssignment.findOne({
+      where: {
+        staffId,
+        bookingId,
+        status: 'assigned',
+      },
+      transaction: t,
+    });
+    if (existing) {
+      throw httpError(409, 'This staff member is already assigned to this booking');
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const row = await StaffAssignment.create(
+      {
+        staffId,
+        bookingId,
+        assignmentRole: assignmentRole || staff.jobRole || 'Field staff',
+        assignedAt: today,
+        status: 'assigned',
+      },
+      { transaction: t }
+    );
+    createdId = row.id;
+  });
+
+  const all = await listAssignments({});
+  const created = all.find((a) => a.id === createdId);
+  if (!created) {
+    // Fallback if include shape differs after create
+    const { StaffAssignment, Staff, User, Booking, Event } = getModels();
+    return StaffAssignment.findByPk(createdId, {
+      include: [
+        { model: Staff, include: [{ model: User, attributes: ['id', 'username', 'email'] }] },
+        { model: Booking, include: [{ model: Event }] },
+      ],
+    });
+  }
+  return created;
+}
+
 module.exports = {
   listBookings,
   getBooking,
@@ -382,4 +535,7 @@ module.exports = {
   getQuote,
   updateQuoteStatus,
   listCategories,
+  listStaff,
+  listAssignments,
+  assignStaff,
 };

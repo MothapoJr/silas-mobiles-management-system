@@ -13,27 +13,29 @@ const NOTIFICATION_STATUSES = ['pending', 'sent', 'failed', 'read'];
 
 /**
  * Human-readable message for a booking status transition (SA English).
+ * The full booking id is used (no truncation) so it matches the id the
+ * client sees, and can copy, on the Bookings tab.
  */
 function messageForStatusChange({ previousStatus, newStatus, bookingId }) {
-  const shortId = String(bookingId).slice(0, 8);
+  const id = String(bookingId);
   switch (newStatus) {
     case 'confirmed':
-      return `Your booking ${shortId}… has been confirmed.`;
+      return `Your booking ${id} has been confirmed.`;
     case 'cancelled':
       if (previousStatus === 'pending') {
-        return `Your booking ${shortId}… was not approved and has been cancelled.`;
+        return `Your booking ${id} was not approved and has been cancelled.`;
       }
-      return `Your booking ${shortId}… has been cancelled.`;
+      return `Your booking ${id} has been cancelled.`;
     case 'active':
-      return `Your booking ${shortId}… is now active.`;
+      return `Your booking ${id} is now active.`;
     case 'completed':
-      return `Your booking ${shortId}… has been completed. Thank you for choosing Silas Mobiles.`;
+      return `Your booking ${id} has been completed. Thank you for choosing Silas Mobiles.`;
     case 'disputed':
-      return `Your booking ${shortId}… has been marked as disputed. Our team will contact you.`;
+      return `Your booking ${id} has been marked as disputed. Our team will contact you.`;
     case 'expired':
-      return `Your booking ${shortId}… has expired without confirmation.`;
+      return `Your booking ${id} has expired without confirmation.`;
     default:
-      return `Your booking ${shortId}… status is now "${newStatus}".`;
+      return `Your booking ${id} status is now "${newStatus}".`;
   }
 }
 
@@ -152,4 +154,5 @@ module.exports = {
   // exported for tests / manual triggers
   handleBookingStatusChanged,
   sendViaSesStub,
+  messageForStatusChange,
 };
