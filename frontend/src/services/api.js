@@ -252,6 +252,30 @@ export async function adminUpdateService(id, body) {
   });
 }
 
+/** GET /api/admin/staff — optional ?availability=available */
+export async function adminListStaff(availability) {
+  const q = availability
+    ? `?availability=${encodeURIComponent(availability)}`
+    : '';
+  return request(`/admin/staff${q}`);
+}
+
+/** GET /api/admin/assignments — optional ?status=&bookingId= */
+export async function adminListAssignments({ status, bookingId } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (bookingId) params.set('bookingId', bookingId);
+  const q = params.toString() ? `?${params.toString()}` : '';
+  return request(`/admin/assignments${q}`);
+}
+
+/** POST /api/admin/assignments — body: { staffId, bookingId, assignmentRole? } */
+export async function adminAssignStaff(body) {
+  return request('/admin/assignments', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
 
 // --- Staff API helpers (T19) ------------------------------------------------
 

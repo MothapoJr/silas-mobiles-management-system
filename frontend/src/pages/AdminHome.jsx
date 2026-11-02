@@ -9,6 +9,9 @@ import {
   adminUpdateEquipment,
   adminListServices,
   adminUpdateService,
+  adminListStaff,
+  adminListAssignments,
+  adminAssignStaff,
 } from '../services/api';
 import DashboardLayout from '../components/DashboardLayout';
 import StatusBadge from '../components/StatusBadge';
@@ -17,6 +20,7 @@ import EntityId from '../components/EntityId';
 
 const TABS = [
   { id: 'bookings', label: 'Bookings' },
+  { id: 'assignments', label: 'Assignments' },
   { id: 'equipment', label: 'Equipment' },
   { id: 'services', label: 'Services' },
 ];
@@ -36,11 +40,14 @@ export default function AdminHome() {
       navLabel="Administrator navigation"
     >
       {activeTab === 'bookings' && <BookingsSection />}
+      {activeTab === 'assignments' && <AssignmentsSection />}
       {activeTab === 'equipment' && <EquipmentSection />}
       {activeTab === 'services' && <ServicesSection />}
     </DashboardLayout>
   );
 }
+
+/* ─── Bookings ──────────────────────────────────────────────────────────── */
 
 function BookingsSection() {
   const [bookings, setBookings] = useState([]);
@@ -239,6 +246,347 @@ function BookingsSection() {
   );
 }
 
+/* ─── Assignments (pick confirmed booking → pick staff → assign) ────────── */
+
+function AssignmentsSection() {
+  const [assignments, setAssignments] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [confirmedBookings, setConfirmedBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [bookingId, setBookingId] = useState('');
+  const [staffId, setStaffId] = useState('');
+  const [assignmentRole, setAssignmentRole] = useState('');
+  const [statusFilter, setStatusFilter] = useState('assigned');
+
+  async function loadAll(filter) {
+    setLoading(true);
+    setError(null);
+    try {
+      const [asgRes, staffRes, confRes] = await Promise.all([
+        adminListAssignments({
+          status: filter === 'all' ? undefined : filter,
+        }),
+        adminListStaff(),
+        adminListBookings('confirmed'),
+      ]);
+
+      const asgList = Array.isArray(asgRes)
+        ? asgRes
+        : Array.isArray(asgRes?.assignments)
+          ? asgRes.assignments
+          : [];
+      const sList = Array.isArray(staffRes)
+        ? staffRes
+        : Array.isArray(staffRes?.staff)
+          ? staffRes.staff
+          : [];
+      const bList = Array.isArray(confRes)
+        ? confRes
+        : Array.isArray(confRes?.bookings)
+          ? confRes.bookings
+          : [];
+
+      setAssignments(asgList);
+      setStaffList(sList);
+      setConfirmedBookings(bList);
+
+      if (!staffId && sList.length > 0) {
+        const preferred =
+          sList.find((s) => s.availability === 'available') || sList[0];
+        setStaffId(preferred.id);
+      }
+      if (!bookingId && bList.length > 0) {
+        setBookingId(bList[0].id);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load assignments');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAll(statusFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
+
+  function formatMoney(value) {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return `R ${n.toLocaleString('en-ZA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function staffLabel(s) {
+    const email = s.User?.email || s.User?.username || s.id?.slice(0, 8);
+    const role = s.jobRole ? ` · ${s.jobRole}` : '';
+    const avail = s.availability ? ` · ${s.availability}` : '';
+    return `${email}${role}${avail}`;
+  }
+
+  function bookingLabel(b) {
+    const venue = b.Event?.venue || 'No venue';
+    const date = b.bookingDate || '';
+    const client =
+      b.Client?.name || b.Client?.companyName || b.Client?.User?.email || '';
+    return `${date} · ${venue}${client ? ` · ${client}` : ''}`;
+  }
+
+  async function handleAssign(e) {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+
+    if (!bookingId) {
+      setActionError('Select a confirmed booking');
+      return;
+    }
+    if (!staffId) {
+      setActionError('Select a staff member');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await adminAssignStaff({
+        bookingId,
+        staffId,
+        assignmentRole: assignmentRole.trim() || undefined,
+      });
+      setActionSuccess('Staff assigned to booking');
+      setAssignmentRole('');
+      await loadAll(statusFilter);
+    } catch (err) {
+      setActionError(err.message || 'Assign failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const FILTERS = [
+    { value: 'assigned', label: 'Assigned' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'all', label: 'All' },
+  ];
+
+  return (
+    <SectionCard title="Staff assignments">
+      <p className="mb-4 text-sm text-silas-muted">
+        Assign available staff to a confirmed booking. Staff will see the job
+        on their Assignments tab and can update delivery status.
+      </p>
+
+      {loading && (
+        <p className="text-sm text-silas-ink/60">Loading assignments…</p>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {(actionError || actionSuccess) && (
+        <p
+          className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+            actionError
+              ? 'bg-red-50 text-red-700'
+              : 'bg-green-50 text-green-800'
+          }`}
+        >
+          {actionError || actionSuccess}
+        </p>
+      )}
+
+      {!loading && !error && (
+        <div className="space-y-8">
+          {/* Assign form */}
+          <div>
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
+              Assign staff
+            </h3>
+            {confirmedBookings.length === 0 && (
+              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                No confirmed bookings yet. Approve a pending booking first,
+                then return here to assign staff.
+              </p>
+            )}
+            {staffList.length === 0 && (
+              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                No staff profiles found. Seed or create a staff user before
+                assigning.
+              </p>
+            )}
+            <form
+              onSubmit={handleAssign}
+              className="space-y-4 rounded-xl border border-silas-navy/10 bg-white p-4 shadow-sm"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="asg-booking"
+                    className="mb-1 block text-sm font-medium text-silas-navy"
+                  >
+                    Confirmed booking
+                  </label>
+                  <select
+                    id="asg-booking"
+                    value={bookingId}
+                    onChange={(e) => setBookingId(e.target.value)}
+                    className="w-full rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                  >
+                    {confirmedBookings.length === 0 && (
+                      <option value="">None available</option>
+                    )}
+                    {confirmedBookings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {bookingLabel(b)} — {formatMoney(b.totalCost)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="asg-staff"
+                    className="mb-1 block text-sm font-medium text-silas-navy"
+                  >
+                    Staff member
+                  </label>
+                  <select
+                    id="asg-staff"
+                    value={staffId}
+                    onChange={(e) => setStaffId(e.target.value)}
+                    className="w-full rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                  >
+                    {staffList.length === 0 && (
+                      <option value="">None available</option>
+                    )}
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {staffLabel(s)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="asg-role"
+                    className="mb-1 block text-sm font-medium text-silas-navy"
+                  >
+                    Assignment role (optional)
+                  </label>
+                  <input
+                    id="asg-role"
+                    type="text"
+                    value={assignmentRole}
+                    onChange={(e) => setAssignmentRole(e.target.value)}
+                    placeholder="e.g. Delivery lead, On-site technician"
+                    className="w-full rounded-lg border border-silas-navy/20 px-3 py-2 text-sm focus:border-silas-gold focus:outline-none focus:ring-1 focus:ring-silas-gold"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={
+                  submitting ||
+                  confirmedBookings.length === 0 ||
+                  staffList.length === 0
+                }
+                className="rounded-lg bg-silas-navy px-4 py-2 text-sm font-medium text-white hover:bg-silas-navy-deep disabled:opacity-50"
+              >
+                {submitting ? 'Assigning…' : 'Assign staff'}
+              </button>
+            </form>
+          </div>
+
+          {/* Existing assignments */}
+          <div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-silas-navy/70">
+                Current assignments
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setStatusFilter(f.value)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      statusFilter === f.value
+                        ? 'bg-silas-navy text-white'
+                        : 'bg-silas-navy/10 text-silas-navy hover:bg-silas-navy/20'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {assignments.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-silas-navy/15 bg-white/60 px-4 py-6 text-center text-sm text-silas-muted">
+                No assignments in this filter.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {assignments.map((a) => (
+                  <li
+                    key={a.id}
+                    className="rounded-xl border border-silas-navy/10 bg-white p-3.5 shadow-sm transition-ui hover:border-silas-navy/15"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <EntityId id={a.id} label="Assignment" />
+                        <p className="mt-1.5 text-sm text-silas-ink">
+                          <span className="font-medium text-silas-navy">
+                            {a.Staff?.User?.email ||
+                              a.Staff?.User?.username ||
+                              'Staff'}
+                          </span>
+                          {a.assignmentRole ? (
+                            <span className="text-silas-muted">
+                              {' '}
+                              · {a.assignmentRole}
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="mt-0.5 text-sm text-silas-muted">
+                          Booking {a.bookingId?.slice?.(0, 8) || a.bookingId}
+                          {a.Booking?.Event?.venue
+                            ? ` · ${a.Booking.Event.venue}`
+                            : ''}
+                          {a.Booking?.bookingDate
+                            ? ` · ${a.Booking.bookingDate}`
+                            : ''}
+                        </p>
+                        <p className="mt-0.5 text-xs tabular-nums text-silas-muted">
+                          Assigned {a.assignedAt}
+                        </p>
+                      </div>
+                      <StatusBadge status={a.status} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ─── Equipment ─────────────────────────────────────────────────────────── */
+
 function statusLabel(s) {
   const t = String(s).replace(/_/g, ' ');
   return t.charAt(0).toUpperCase() + t.slice(1);
@@ -290,7 +638,6 @@ function EquipmentSection() {
       maximumFractionDigits: 2,
     })}`;
   }
-
 
   async function handleStatusChange(id, status) {
     setActionMsg(null);
@@ -370,6 +717,8 @@ function EquipmentSection() {
     </SectionCard>
   );
 }
+
+/* ─── Services ──────────────────────────────────────────────────────────── */
 
 function ServicesSection() {
   const [services, setServices] = useState([]);
